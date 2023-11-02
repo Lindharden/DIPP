@@ -1,9 +1,8 @@
 #include <stdlib.h>
 #include "types.h"
-#include "modules/addition.c"
-#include "modules/multiplication.c"
-#include "modules/subtraction.c"
-
+#include "modules/module_addition.c"
+#include "modules/module_multiplication.c"
+#include "modules/module_subtraction.c"
 
 void initializePipeline(Pipeline *pipeline, ProcessFunction funcs[], size_t size) {
     pipeline->functions = malloc(size * sizeof(ProcessFunction));
@@ -22,7 +21,6 @@ void executePipeline(Pipeline *pipeline, Data *data) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc == 1) return 0;
 
     // Define the processing functions to use
     ProcessFunction funcs[] = {additionModule, multiplicationModule, subtractionModule};
@@ -35,7 +33,7 @@ int main(int argc, char *argv[]) {
     Data data;
     
     // ... Initialize data ...
-    data.value = argv[1];
+    data.value = atoi(argv[1]);
     
     // Execute the pipeline
     executePipeline(&pipeline, &data);
