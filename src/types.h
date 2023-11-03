@@ -10,7 +10,7 @@ typedef struct Data {
 typedef void (*ProcessFunction)(Data *);
 
 typedef struct {
-    ProcessFunction *functions;
+    ProcessFunction* functions;
     size_t size;
 } Pipeline;
 
