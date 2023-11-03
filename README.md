@@ -1,25 +1,17 @@
-# C project template
+# C Data Processing Pipeline
+Data Processing Pipeline for the Disco-2 CubeSat satellite.
 
-<img src="https://raw.githubusercontent.com/pantuza/c-project-template/media/cpt-cover.png" align="center" />
+## Compile External Function
+To compile the external functions from C files, use the following command:
+```
+gcc -shared -o <compiled_name>.so <filename>.c
+```
+The resulting `.so` files can be referenced directly in the code.
 
-Every C project has a lazy start by creating lots of command line parsers, Makefiles, help and usage messages.
-**C project template** aims to take you to the solution point! The point you write the code that solves your problem.
+The function within each module should have the name `run()`. This is the function that will be called within the pipeline.
 
-For detailed informations, check out the [Documentation wiki](https://github.com/pantuza/c-project-template/wiki)
-
-The project brings you a Makefile, command line options parsing,
-colors for pretty printing, [valgrind](http://valgrind.org/) report and unittest
-using [cmocka](https://cmocka.org/). 
-
-
-### Quick usage
-
-* Clone project
-* Edit project.conf
-* make start
-
-Checkout the [Get started](https://github.com/pantuza/c-project-template/wiki/Get-started) and the [Documentation wiki](https://github.com/pantuza/c-project-template/wiki)
-
-#### Author
-
-Gustavo Pantuza <gustavopantuza@gmail.com>
+## Build the Pipeline
+After the external modules have been compiled into .so files, the entire pipeline can be built. This is done with the command:
+```
+make
+```
