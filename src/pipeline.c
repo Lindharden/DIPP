@@ -23,7 +23,10 @@ void executePipeline(Pipeline *pipeline, Data *data) {
 typedef int (*ExpectedSignature)(int);
 
 // Define a function that loads a function from a shared object and returns a function pointer
-void* loadFunction(const char* filename) {
+void* loadFunction(const char* moduleName) {
+    char filename[256]; // Adjust the buffer size as needed
+    snprintf(filename, sizeof(filename), "./external_modules/%s.so", moduleName);
+
     // Load the external library dynamically
     void* handle = dlopen(filename, RTLD_LAZY);
     if (handle == NULL) {
@@ -50,31 +53,51 @@ void* loadFunction(const char* filename) {
     return functionPointer;
 }
 
-// Define a function that loads multiple functions from shared objects and stores them in an array
-void loadFunctionsFromFiles(const char* filenames[], int numFiles, void* functionPointers[]) {
-    for (int i = 0; i < numFiles; i++) {
-        functionPointers[i] = loadFunction(filenames[i]);
+// Function to load modules from a configuration file
+int loadModulesFromFile(const char* configFile, void* functionPointers[], int maxModules) {
+    // Open the configuration file
+    FILE* file = fopen(configFile, "r");
+    if (file == NULL) {
+        fprintf(stderr, "Error: Unable to open the configuration file.\n");
+        return 0; // Return 0 to indicate failure
     }
+
+    // Read module names from the configuration file and load them
+    char line[256]; // Adjust the buffer size as needed
+    int numModules = 0;
+    
+    while (fgets(line, sizeof(line), file) != NULL && numModules < maxModules) {
+        // Remove the newline character, if present
+        size_t len = strlen(line);
+        if (len > 0 && line[len - 1] == '\n') {
+            line[len - 1] = '\0';
+        }
+        
+        // Load the module and store the function pointer
+        functionPointers[numModules] = loadFunction(line);
+        if (functionPointers[numModules] != NULL) {
+            numModules++;
+        }
+    }
+
+    // Close the configuration file
+    fclose(file);
+
+    return numModules;
 }
 
-// Define the expected signature
-typedef int (*AddOneFunction)(int);
-
 int main(int argc, char *argv[]) {
-
-    // TODO: Read functions from config file instead (or just txt file who knows :D)
     // TODO: Expand modules such that the inputs and outputs of each module can be different.
-    const char* sharedObjectFiles[] = {"./external_modules/addition.so", "./external_modules/subtraction.so"};
 
-    // Define an array to store function pointers
-    void* functionPointers[sizeof(sharedObjectFiles) / sizeof(sharedObjectFiles[0])];
+    int functionLimit = 10;
+    void* functionPointers[functionLimit];
 
-    // Load functions from the shared objects
-    loadFunctionsFromFiles(sharedObjectFiles, sizeof(sharedObjectFiles) / sizeof(sharedObjectFiles[0]), functionPointers);
+    // Load modules from the configuration file
+    int numModules = loadModulesFromFile("modules.txt", functionPointers, functionLimit);
 
     // Initialize the pipeline
-    Pipeline pipeline; // find the amount of functions by dividing the size of the array, with the size of the first element
-    initializePipeline(&pipeline, functionPointers, sizeof(functionPointers) / sizeof(functionPointers[0]));
+    Pipeline pipeline;
+    initializePipeline(&pipeline, functionPointers, numModules);
     
     // Prepare the data
     Data data;
