@@ -1,5 +1,7 @@
 # C Data Processing Pipeline
-Data Processing Pipeline for the Disco-2 CubeSat satellite.
+MARIO stands for: Modular, Adaptive, Reconfigurable, Image, Orchestrator.
+
+MARIO is an modular image processing pipeline tailored to run on the Disco-2 CubeSat.
 
 ## Compile External Function
 To compile the external functions from C files, use the following command:
