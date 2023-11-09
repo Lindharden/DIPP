@@ -1,6 +1,9 @@
 {
     "files.associations": {
         "types.h": "c",
-        "pipeline.h": "c"
+        "pipeline.h": "c",
+        "vmem_server.h": "c",
+        "vmem_config.h": "c",
+        "vmem.h": "c"
     }
 }

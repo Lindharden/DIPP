@@ -25,11 +25,6 @@ void * vmem_server_task(void * param) {
 	return NULL;
 }
 
-void * ftp_server_task(void * param) {
-	ftp_server_loop(param);
-	return NULL;
-}
-
 void * router_task(void * param) {
 	while(1) {
 		csp_route_work();
@@ -55,7 +50,6 @@ static void iface_init(void){
     iface->name = "zmq";
     csp_rtable_set(0, 0, iface, CSP_NO_VIA_ADDRESS);
 	csp_iflist_set_default(iface);
-
 }
 int fd[2];
 
@@ -64,7 +58,7 @@ void bufread(void){
     char c;
     ssize_t rc;
     while ((rc = read(fd[0], &c, sizeof c)) > 0){
-        _putchar(c);
+        // _putchar(c);
     }
 }
 

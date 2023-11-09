@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <pthread.h>
+#include "pipeline/pipeline.h"
 
 void hook_onehz(void) {
     check_run();

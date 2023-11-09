@@ -31,7 +31,7 @@ typedef int (*ExpectedSignature)(int);
 // Define a function that loads a function from a shared object and returns a function pointer
 void *loadFunction(const char *moduleName) {
     char filename[256]; // Adjust the buffer size as needed
-    snprintf(filename, sizeof(filename), "./external_modules/%s.so", moduleName);
+    snprintf(filename, sizeof(filename), "../external_modules/%s.so", moduleName);
 
     // Load the external library dynamically
     void *handle = dlopen(filename, RTLD_LAZY);
@@ -108,7 +108,7 @@ void check_run(void) {
     uint8_t do_run = param_get_uint8(&pipeline_run);
     if (do_run > 0)
     {
-        run_pipeline();
+        // run_pipeline();
         param_set_uint8(&pipeline_run, 0);
     }
 }
@@ -118,7 +118,7 @@ void run_pipeline(void) {
     void *functionPointers[functionLimit];
 
     // Load modules from the configuration file
-    int numModules = loadModulesFromFile("modules.txt", functionPointers, functionLimit);
+    int numModules = loadModulesFromFile("../modules.txt", functionPointers, functionLimit);
 
     // Initialize the pipeline
     Pipeline pipeline;

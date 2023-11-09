@@ -19,7 +19,6 @@ sources = files([
     'src/csp_hooks.c',
     'src/pipeline/pipeline.c',
     'src/vmem_config.c',
-    'src/arb_params.c',
 ])
 
 
