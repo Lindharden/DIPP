@@ -6,7 +6,6 @@ To compile the external functions from C files, use the following command:
 ```
 gcc -shared -o <compiled_name>.so <filename>.c
 ```
-The resulting `.so` files can be referenced directly in the code.
 
 The function within each module should have the name `run()`. This is the function that will be called within the pipeline.
 

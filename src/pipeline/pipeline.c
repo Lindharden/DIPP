@@ -4,6 +4,8 @@
 #include <param/param.h>
 #include "types.h"
 #include "pipeline.h"
+#include "../param_config.h"
+#include "../vmem_config.h"
 
 void initializePipeline(Pipeline *pipeline, ProcessFunction *funcs, size_t size) {
     pipeline->functions = malloc(size * sizeof(ProcessFunction));
@@ -111,7 +113,7 @@ void check_run(void) {
     }
 }
 
-int run_pipeline() {
+void run_pipeline(void) {
     int functionLimit = 10;
     void *functionPointers[functionLimit];
 
@@ -126,7 +128,7 @@ int run_pipeline() {
     Data data;
 
     // ... Initialize data ...
-    data.value = atoi(argv[1]);
+    data.value = 1000000;
 
     // Execute the pipeline
     executePipeline(&pipeline, &data);
@@ -136,6 +138,4 @@ int run_pipeline() {
 
     // Clean up
     free(pipeline.functions);
-
-    return 0;
 }

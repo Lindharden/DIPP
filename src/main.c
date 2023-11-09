@@ -7,10 +7,8 @@
 #include "hooks.h"
 #include <vmem/vmem_server.h>
 #include <vmem/vmem_file.h>
-#include "bootcnt.h"
 #include "vmem_config.h"
 #include <csp/drivers/usart.h>
-#include "stdbuf_server.h"
 
 csp_conf_t csp_conf = {
 	.version = 2,
@@ -107,7 +105,6 @@ int main(void){
 
 	csp_bind_callback(csp_service_handler, CSP_ANY);
 	csp_bind_callback(param_serve, PARAM_PORT_SERVER);
-	csp_bind_callback(stdbuf_serve, 15);
 
 	vmem_file_init(&vmem_config);
 
@@ -116,9 +113,6 @@ int main(void){
 
 	static pthread_t vmem_server_handle;
 	pthread_create(&vmem_server_handle, NULL, &vmem_server_task, NULL);
-
-	static pthread_t ftp_server_handle;
-	pthread_create(&ftp_server_handle, NULL, &ftp_server_task, NULL);
 
 	static pthread_t onehz_handle;
 	pthread_create(&onehz_handle, NULL, &onehz_task, NULL);

@@ -25,9 +25,8 @@ sources = files([
 
 csp_dep = dependency('csp', fallback: ['csp', 'csp_dep'])
 param_dep = dependency('param', fallback: ['param', 'param_dep'])
-ftp_dep = dependency('csp_ftp', fallback: ['csp_ftp', 'csp_ftp_dep'])
 
-deps = [csp_dep,param_dep,ftp_dep]
+deps = [csp_dep,param_dep]
 
 c_args = '-DHOSTNAME="@0@"'.format(get_option('hostname'))
 
