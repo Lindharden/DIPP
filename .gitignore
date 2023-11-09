@@ -36,8 +36,8 @@
 !/bin/.gitkeep
 
 # Project object files
-/lib/*
-!/lib/.gitkeep
+# /lib/*
+# !/lib/.gitkeep
 
 # Project logs files
 /log/*
