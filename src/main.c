@@ -51,21 +51,8 @@ static void iface_init(void){
     csp_rtable_set(0, 0, iface, CSP_NO_VIA_ADDRESS);
 	csp_iflist_set_default(iface);
 }
-int fd[2];
-
-extern void _putchar(unsigned char character);
-void bufread(void){
-    char c;
-    ssize_t rc;
-    while ((rc = read(fd[0], &c, sizeof c)) > 0){
-        // _putchar(c);
-    }
-}
 
 int main(void){
-    pipe(fd);
-    dup2(fd[1],1);
-    dup2(fd[1],2);
 	printf("\nbootmsg\n");
 
 	srand(time(NULL));
@@ -110,9 +97,6 @@ int main(void){
 
 	static pthread_t onehz_handle;
 	pthread_create(&onehz_handle, NULL, &onehz_task, NULL);
-
-	static pthread_t buf_handle;
-	pthread_create(&buf_handle, NULL, &bufread, NULL);
 
 	hook_init();
 	while (1){

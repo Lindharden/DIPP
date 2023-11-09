@@ -2,6 +2,7 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <param/param.h>
+#include <csp/csp.h>
 #include "types.h"
 #include "pipeline.h"
 #include "../param_config.h"
@@ -108,12 +109,14 @@ void check_run(void) {
     uint8_t do_run = param_get_uint8(&pipeline_run);
     if (do_run > 0)
     {
-        // run_pipeline();
+        char output[100];
+        sprintf(output, "%d", run_pipeline());
+        csp_print(output);
         param_set_uint8(&pipeline_run, 0);
     }
 }
 
-void run_pipeline(void) {
+int run_pipeline(void) {
     int functionLimit = 10;
     void *functionPointers[functionLimit];
 
@@ -138,4 +141,6 @@ void run_pipeline(void) {
 
     // Clean up
     free(pipeline.functions);
+
+    return data.value;
 }
