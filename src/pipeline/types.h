@@ -7,7 +7,7 @@ typedef struct Data {
     int value;
 } Data;
 
-typedef int (*ProcessFunction)(Data *);
+typedef int (*ProcessFunction)(Data *, uint8_t);
 
 typedef struct {
     ProcessFunction* functions;
