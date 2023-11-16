@@ -5,10 +5,17 @@
 #include <stdio.h>
 #include <param/param.h>
 #include <csp/csp.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
 #include "types.h"
 #include "pipeline.h"
 #include "../param_config.h"
 #include "../vmem_config.h"
+
+// Error codes
+#define SUCCESS 0
+#define FAILURE -1
 
 /* Define module specific parameters */
 static uint8_t _module_param_1 = 1;
@@ -32,25 +39,66 @@ PARAM_DEFINE_STATIC_RAM(PARAMID_PIPELINE_RUN, pipeline_run, PARAM_TYPE_UINT8, -1
 
 void initializePipeline(Pipeline *pipeline, ProcessFunction *funcs, size_t size) {
     pipeline->functions = malloc(size * sizeof(ProcessFunction));
-    if (pipeline->functions == NULL)
-    {
-        // Handle memory allocation failure
-    }
-    
     memcpy(pipeline->functions, funcs, size * sizeof(ProcessFunction));
     pipeline->size = size;
 }
 
-void executePipeline(Pipeline *pipeline, Data *data, int values[], int numModules) {
+int executeModuleInProcess(ProcessFunction func, int input, int *outputPipe, uint8_t paramValue) {
+    // Create a new process
+    pid_t pid = fork();
+
+    if (pid == 0) {
+        // Child process: Execute the module function
+        int result = func(input, paramValue);
+        write(outputPipe[1], &result, sizeof(result)); // Write the result to the pipe
+        exit(EXIT_SUCCESS);
+    } else {
+        // Parent process: Wait for the child process to finish
+        int status;
+        waitpid(pid, &status, 0);
+
+        if (WIFEXITED(status)) {
+            // Child process exited normally
+            if (WEXITSTATUS(status) != 0) {
+                fprintf(stderr, "Child process exited with non-zero status\n");
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            // Child process did not exit normally
+            fprintf(stderr, "Child process did not exit normally\n");
+            return FAILURE;
+        }
+
+        return SUCCESS;
+    }
+}
+
+int executePipeline(Pipeline *pipeline, Data *data, int values[]) {
+    int outputPipe[2]; // Pipe for inter-process communication
+    pipe(outputPipe);
+
     for (size_t i = 0; i < pipeline->size; ++i) {
         ProcessFunction func = pipeline->functions[i];
 
         // Get the parameter value using param_get_uint8
         uint8_t paramValue = param_get_uint8(params[values[i] - 1]);
 
-        // Pass the parameter value along with data->value to the function
-        data->value = func(data->value, paramValue);
+        int module_status = executeModuleInProcess(func, data->value, outputPipe, paramValue);
+
+        if (module_status == FAILURE) {
+            close(outputPipe[0]); // Close the read end of the pipe
+            close(outputPipe[1]); // Close the write end of the pipe
+            return i + 1;
+        }
+
+        // Read the result from the pipe
+        read(outputPipe[0], &data->value, sizeof(data->value));
     }
+
+    close(outputPipe[0]); // Close the read end of the pipe
+    close(outputPipe[1]); // Close the write end of the pipe
+
+    return SUCCESS;
 }
 
 // Function to parse a configuration file with module and parameter names
@@ -135,14 +183,12 @@ void check_run(void) {
     uint8_t do_run = param_get_uint8(&pipeline_run);
     if (do_run > 0)
     {
-        char output[100];
-        sprintf(output, "%d", run_pipeline());
-        csp_print(output);
+        run_pipeline();
         param_set_uint8(&pipeline_run, 0);
     }
 }
 
-int run_pipeline(void) {
+void run_pipeline(void) {
     int functionLimit = 10;
     void *functionPointers[functionLimit];
     char* modules[functionLimit]; // Array to store the module names
@@ -162,13 +208,17 @@ int run_pipeline(void) {
     data.value = 1000000;
 
     // Execute the pipeline with parameter values
-    executePipeline(&pipeline, &data, values, numModules);
+    int status = executePipeline(&pipeline, &data, values);
+
+    if (status != SUCCESS) {
+        // Print failure message
+        printf("Module named '%s' caused a failure in the pipeline\n", modules[status - 1]);
+        return;
+    }
 
     // Print resulting data
     printf("Resulting data value: %d\n", data.value);
 
     // Clean up
     free(pipeline.functions);
-
-    return data.value;
 }
