@@ -77,13 +77,8 @@ int parseConfigFile(const char *configFile, char* modules[], int values[], int m
 
         if (moduleName != NULL && paramName != NULL) {
             // Store the module and parameter names
-
-            
-            
             modules[numModules] = strdup(moduleName);
-            char x = paramName[strlen(paramName) - 1];
-            int y = x - '0';
-            values[numModules] = y;
+            values[numModules] = paramName[strlen(paramName) - 1] - '0';
 
             numModules++;
         }
