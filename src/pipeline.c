@@ -1,22 +1,76 @@
 #include <stdlib.h>
 #include <dlfcn.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
 #include "types.h"
+
+// Error codes
+#define SUCCESS 0
+#define FAILURE -1
 
 void initializePipeline(Pipeline *pipeline, ProcessFunction *funcs, size_t size) {
     pipeline->functions = malloc(size * sizeof(ProcessFunction));
-    if (pipeline->functions == NULL) {
-        // Handle memory allocation failure
-    }
     memcpy(pipeline->functions, funcs, size * sizeof(ProcessFunction));
     pipeline->size = size;
 }
 
-void executePipeline(Pipeline *pipeline, Data *data) {
+int executeModuleInProcess(ProcessFunction func, int input, int *outputPipe) {
+    // Create a new process
+    pid_t pid = fork();
+
+    if (pid == 0) {
+        // Child process: Execute the module function
+        int result = func(input);
+        write(outputPipe[1], &result, sizeof(result)); // Write the result to the pipe
+        exit(EXIT_SUCCESS);
+    } else {
+        // Parent process: Wait for the child process to finish
+        int status;
+        waitpid(pid, &status, 0);
+
+        if (WIFEXITED(status)) {
+            // Child process exited normally
+            if (WEXITSTATUS(status) != 0) {
+                fprintf(stderr, "Child process exited with non-zero status\n");
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            // Child process did not exit normally
+            fprintf(stderr, "Child process did not exit normally\n");
+            return FAILURE;
+        }
+
+        return SUCCESS;
+    }
+}
+
+int executePipeline(Pipeline *pipeline, Data *data) {
+    int outputPipe[2]; // Pipe for inter-process communication
+    pipe(outputPipe);
+
     for (size_t i = 0; i < pipeline->size; ++i) {
         ProcessFunction func = pipeline->functions[i];
-        data->value = func(data->value);
+
+        int module_status = executeModuleInProcess(func, data->value, outputPipe);
+
+        if (module_status == FAILURE) {
+            close(outputPipe[0]); // Close the read end of the pipe
+            close(outputPipe[1]); // Close the write end of the pipe
+            return i + 1;
+        }
+
+        // Read the result from the pipe
+        read(outputPipe[0], &data->value, sizeof(data->value));
     }
+
+    close(outputPipe[0]); // Close the read end of the pipe
+    close(outputPipe[1]); // Close the write end of the pipe
+
+    return SUCCESS;
 }
 
 // Define the expected function signature
@@ -86,33 +140,39 @@ int loadModulesFromFile(const char* configFile, void* functionPointers[], int ma
     return numModules;
 }
 
-int main(int argc, char *argv[]) {
-    // TODO: Expand modules such that the inputs and outputs of each module can be different.
-
-    int functionLimit = 10;
+void main(int argc, char *argv[]) {
+    int functionLimit = 100;
     void* functionPointers[functionLimit];
+    int moduleReps = atoi(argv[2]);
 
+    for (size_t i = 0; i < moduleReps; ++i) {
+        functionPointers[i] = loadFunction("pi");
+    }
     // Load modules from the configuration file
-    int numModules = loadModulesFromFile("modules.txt", functionPointers, functionLimit);
+    // int numModules = loadModulesFromFile("modules.txt", functionPointers, functionLimit);
 
     // Initialize the pipeline
     Pipeline pipeline;
-    initializePipeline(&pipeline, functionPointers, numModules);
-    
+    initializePipeline(&pipeline, functionPointers, moduleReps);
+
     // Prepare the data
     Data data;
-    
+
     // ... Initialize data ...
     data.value = atoi(argv[1]);
-    
-    // Execute the pipeline
-    executePipeline(&pipeline, &data);
+
+    // Execute the pipeline with parameter values
+    int status = executePipeline(&pipeline, &data);
+
+    if (status != SUCCESS) {
+        // Print failure message
+        printf("Failure in the pipeline\n");
+        return;
+    }
 
     // Print resulting data
     printf("Resulting data value: %d\n", data.value);
-    
+
     // Clean up
     free(pipeline.functions);
-    
-    return 0;
 }
