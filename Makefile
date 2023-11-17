@@ -95,6 +95,9 @@ TEST_BINARY := $(BINARY)_test_runner
 NAMES := $(notdir $(basename $(wildcard $(SRCDIR)/*.$(SRCEXT))))
 OBJECTS :=$(patsubst %,$(LIBDIR)/%.o,$(NAMES))
 
+# Dynamic Linking library
+LDFLAGS=-ldl
+
 
 #
 # COMPILATION RULES
@@ -129,7 +132,7 @@ start:
 # Rule for link and generate the binary file
 all: $(OBJECTS)
 	@echo -en "$(BROWN)LD $(END_COLOR)";
-	$(CC) -o $(BINDIR)/$(BINARY) $+ $(DEBUG) $(CFLAGS) $(LIBS)
+	$(CC) -o $(BINDIR)/$(BINARY) $+ $(DEBUG) $(CFLAGS) $(LIBS) $(LDFLAGS)
 	@echo -en "\n--\nBinary file placed at" \
 			  "$(BROWN)$(BINDIR)/$(BINARY)$(END_COLOR)\n";
 
