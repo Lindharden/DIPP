@@ -140,16 +140,21 @@ int loadModulesFromFile(const char* configFile, void* functionPointers[], int ma
     return numModules;
 }
 
-void main() {
+void main(int argc, char *argv[]) {
     int functionLimit = 100;
     void* functionPointers[functionLimit];
+    int moduleReps = atoi(argv[1]);
+
+    for (size_t i = 0; i < moduleReps; ++i) {
+        functionPointers[i] = loadFunction("empty");
+    }
 
     // Load modules from the configuration file
-    int numModules = loadModulesFromFile("modules.txt", functionPointers, functionLimit);
+    // int numModules = loadModulesFromFile("modules.txt", functionPointers, functionLimit);
 
     // Initialize the pipeline
     Pipeline pipeline;
-    initializePipeline(&pipeline, functionPointers, numModules);
+    initializePipeline(&pipeline, functionPointers, moduleReps);
 
     // Prepare the data
     Data data;

@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/binary",
-            "args": [],
+            "args": [2],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
