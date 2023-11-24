@@ -9,6 +9,7 @@ echo "Iteration,avg-cpu-clock,avg-context-switches,avg-cache-misses,avg-cache-re
 
 for i in $(seq 1 100)
 do
+    echo "iteration" $i
     # Initialize sum variables
     sum_cpu_clock=0
     sum_context_switches=0
@@ -46,8 +47,10 @@ do
     avg_peak_memory=$(echo "scale=2; $sum_peak_memory / $NUM_ITERATIONS" | bc)
 
     # Calculate average cache miss rate
-    avg_cache_miss_rate=$(echo "scale=2; $avg_cache_misses / $avg_cache_references * 100" | bc)
+    avg_cache_miss_rate=$(echo "scale=10; $avg_cache_misses / $avg_cache_references * 100" | bc)
 
     # Write averages to CSV file
+    echo "$i,$avg_cpu_clock,$avg_context_switches,$avg_cache_misses,$avg_cache_references,$avg_cache_miss_rate,$avg_peak_memory"
+    echo " "
     echo "$i,$avg_cpu_clock,$avg_context_switches,$avg_cache_misses,$avg_cache_references,$avg_cache_miss_rate,$avg_peak_memory" >> $CSV_FILE
 done
