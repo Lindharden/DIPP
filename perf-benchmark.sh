@@ -24,8 +24,8 @@ do
         # Extract measurements from perf output
         cpu_clock=$(echo "$perf_output" | grep 'cpu-clock' | awk '{print $1}')
         context_switches=$(echo "$perf_output" | grep 'context-switches' | awk '{print $1}')
-        cache_misses=$(echo "$perf_output" | grep 'cache-misses' | awk '{print $1}')
-        cache_references=$(echo "$perf_output" | grep 'cache-references' | awk '{print $1}')
+        cache_misses=$(echo "$perf_output" | grep 'cache-misses' | awk '{print $1}' | tr -d ',')
+        cache_references=$(echo "$perf_output" | grep 'cache-references' | awk '{print $1}' | tr -d ',')
 
         # Run binary with time command and capture peak memory usage
         peak_memory=$(/usr/bin/time -f "%M" $BINARY $i 2>&1 | tail -n 1)
