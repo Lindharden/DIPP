@@ -12,6 +12,7 @@
 #include "pipeline.h"
 #include "../param_config.h"
 #include "../vmem_config.h"
+#include "../protos/tester.pb-c.h"
 
 // Error codes
 #define SUCCESS 0
@@ -32,6 +33,7 @@ PARAM_DEFINE_STATIC_RAM(PARAMID_MODULE_PARAM_5, module_param_5, PARAM_TYPE_UINT8
 PARAM_DEFINE_STATIC_RAM(PARAMID_MODULE_PARAM_6, module_param_6, PARAM_TYPE_UINT8, -1, 0, PM_CONF, NULL, NULL, &_module_param_6, "Module parameter");
 
 PARAM_DEFINE_STATIC_VMEM(9, config_str, PARAM_TYPE_STRING, 200 ,0, PM_CONF, NULL, NULL, config, VMEM_CONF_CONFIG, NULL);
+PARAM_DEFINE_STATIC_VMEM(10, proto_data, PARAM_TYPE_DATA, 200 ,0, PM_CONF, NULL, NULL, proto, VMEM_CONF_PROTO, NULL);
 
 static param_t* params[] = {&module_param_1, &module_param_2, &module_param_3, &module_param_4, &module_param_5, &module_param_6};
 
@@ -83,7 +85,11 @@ int executePipeline(Pipeline *pipeline, Data *data, int values[]) {
         ProcessFunction func = pipeline->functions[i];
 
         // Get the parameter value using param_get_uint8
-        uint8_t paramValue = param_get_uint8(params[values[i] - 1]);
+        // uint8_t paramValue = param_get_uint8(params[values[i] - 1]);
+        uint8_t buf[100];
+        param_get_data(&proto_data, buf, 100);
+        Person *unpacked_jepp = person__unpack(NULL, 100, buf);
+        int paramValue = unpacked_jepp->id;
 
         int module_status = executeModuleInProcess(func, data->value, outputPipe, paramValue);
 
@@ -191,6 +197,15 @@ void check_run(void) {
 }
 
 void run_pipeline(void) {
+    Person jepp = PERSON__INIT;
+    jepp.name = "Jepbar";
+    jepp.id = 69;
+    jepp.email = "jepli@itu.dk";
+    size_t len = person__get_packed_size(&jepp);
+    uint8_t buf[len];
+    person__pack(&jepp, buf);
+    param_set_data(&proto_data, buf, len);
+
     int functionLimit = 10;
     void *functionPointers[functionLimit];
     char* modules[functionLimit]; // Array to store the module names
