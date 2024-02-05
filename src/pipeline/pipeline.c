@@ -31,6 +31,8 @@ PARAM_DEFINE_STATIC_RAM(PARAMID_MODULE_PARAM_4, module_param_4, PARAM_TYPE_UINT8
 PARAM_DEFINE_STATIC_RAM(PARAMID_MODULE_PARAM_5, module_param_5, PARAM_TYPE_UINT8, -1, 0, PM_CONF, NULL, NULL, &_module_param_5, "Module parameter");
 PARAM_DEFINE_STATIC_RAM(PARAMID_MODULE_PARAM_6, module_param_6, PARAM_TYPE_UINT8, -1, 0, PM_CONF, NULL, NULL, &_module_param_6, "Module parameter");
 
+PARAM_DEFINE_STATIC_VMEM(9, config_str, PARAM_TYPE_STRING, 200 ,0, PM_CONF, NULL, NULL, config, VMEM_CONF_CONFIG, NULL);
+
 static param_t* params[] = {&module_param_1, &module_param_2, &module_param_3, &module_param_4, &module_param_5, &module_param_6};
 
 /* Define a pipeline_run parameter */
