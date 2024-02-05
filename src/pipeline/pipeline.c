@@ -77,6 +77,23 @@ int executeModuleInProcess(ProcessFunction func, int input, int *outputPipe, uin
     }
 }
 
+int get_buf_size(uint8_t *buf, size_t buf_size) {
+    size_t actual_size = 0;
+
+    while (actual_size < buf_size && buf[actual_size] != 0) {
+        actual_size++;
+    }
+
+    return actual_size;
+}
+
+void trim_buffer(uint8_t *buf, uint8_t *old_buf, size_t buf_size) {
+    // Copy the data from the original buffer to the new buffer
+    for (size_t i = 0; i < buf_size; i++) {
+        buf[i] = old_buf[i];
+    }
+}
+
 int executePipeline(Pipeline *pipeline, Data *data, int values[]) {
     int outputPipe[2]; // Pipe for inter-process communication
     pipe(outputPipe);
@@ -86,9 +103,18 @@ int executePipeline(Pipeline *pipeline, Data *data, int values[]) {
 
         // Get the parameter value using param_get_uint8
         // uint8_t paramValue = param_get_uint8(params[values[i] - 1]);
-        uint8_t buf[100];
-        param_get_data(&proto_data, buf, 100);
-        Person *unpacked_jepp = person__unpack(NULL, 100, buf);
+        int initial_buf_size = 200;
+        uint8_t buf[initial_buf_size];
+        param_get_data(&proto_data, buf, initial_buf_size);
+        int buf_size = get_buf_size(buf, initial_buf_size);
+
+        // allocate trimmed buffer and copy data
+        uint8_t trimmed_buf[buf_size];
+        trim_buffer(trimmed_buf, buf, buf_size);
+
+        // unpack parameters
+        Person *unpacked_jepp = person__unpack(NULL, buf_size, trimmed_buf);
+        
         int paramValue = unpacked_jepp->id;
 
         int module_status = executeModuleInProcess(func, data->value, outputPipe, paramValue);
@@ -200,7 +226,7 @@ void run_pipeline(void) {
     Person jepp = PERSON__INIT;
     jepp.name = "Jepbar";
     jepp.id = 69;
-    jepp.email = "jepli@itu.dk";
+    jepp.email = "jepli@itu.dk0";
     size_t len = person__get_packed_size(&jepp);
     uint8_t buf[len];
     person__pack(&jepp, buf);
