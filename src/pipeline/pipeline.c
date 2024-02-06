@@ -13,6 +13,7 @@
 #include "../param_config.h"
 #include "../vmem_config.h"
 #include "../protos/tester.pb-c.h"
+#include "../protos/config.pb-c.h"
 
 // Error codes
 #define SUCCESS 0
@@ -113,9 +114,33 @@ int executePipeline(Pipeline *pipeline, Data *data, int values[]) {
         trim_buffer(trimmed_buf, buf, buf_size);
 
         // unpack parameters
-        Person *unpacked_jepp = person__unpack(NULL, buf_size, trimmed_buf);
+        // Person *unpacked_jepp = person__unpack(NULL, buf_size, trimmed_buf);
         
-        int paramValue = unpacked_jepp->id;
+        // int paramValue = unpacked_jepp->id;
+
+        // find specific value from key in protodata
+        ModuleConfig *unpacked_config = module_config__unpack(NULL, buf_size, trimmed_buf);
+        const char *desired_key = "method";
+        ConfigParameter *found_parameter = NULL;
+        for (size_t i = 0; i < unpacked_config->n_parameters; i++) {
+            if (strcmp(unpacked_config->parameters[i]->key, desired_key) == 0) {
+                found_parameter = unpacked_config->parameters[i];
+                break;
+            }
+        }
+
+        // How to identify value type
+        if (found_parameter != NULL) {
+            switch (found_parameter->value_case) {
+                case CONFIG_PARAMETER__VALUE_BOOL_VALUE:
+                    break;
+                case CONFIG_PARAMETER__VALUE_FLOAT_VALUE:
+                    break;
+                
+            }
+        }
+
+        int paramValue = found_parameter->int_value;
 
         int module_status = executeModuleInProcess(func, data->value, outputPipe, paramValue);
 
@@ -223,6 +248,7 @@ void check_run(void) {
 }
 
 void run_pipeline(void) {
+    // Person example
     Person jepp = PERSON__INIT;
     jepp.name = "Jepbar";
     jepp.id = 69;
@@ -230,7 +256,26 @@ void run_pipeline(void) {
     size_t len = person__get_packed_size(&jepp);
     uint8_t buf[len];
     person__pack(&jepp, buf);
-    param_set_data(&proto_data, buf, len);
+    //param_set_data(&proto_data, buf, len);
+
+    // Module parameter config example
+    ModuleConfig compression_config = MODULE_CONFIG__INIT;
+    ConfigParameter compression_rate = CONFIG_PARAMETER__INIT;
+    ConfigParameter compression_method = CONFIG_PARAMETER__INIT;
+    compression_rate.key = "compressionRate";
+    compression_rate.value_case = CONFIG_PARAMETER__VALUE_INT_VALUE;
+    compression_rate.int_value = 420;
+    compression_method.key = "method";
+    compression_method.value_case = CONFIG_PARAMETER__VALUE_STRING_VALUE;
+    compression_method.string_value = "JepbarComp";
+    compression_config.parameters = malloc(sizeof(ConfigParameter *) * 2);
+    compression_config.n_parameters = 2;
+    compression_config.parameters[0] = &compression_rate;
+    compression_config.parameters[1] = &compression_method;
+    size_t lenConfig = module_config__get_packed_size(&compression_config);
+    uint8_t bufConfig[lenConfig];
+    module_config__pack(&compression_config, bufConfig);
+    param_set_data(&proto_data, bufConfig, lenConfig);
 
     int functionLimit = 10;
     void *functionPointers[functionLimit];

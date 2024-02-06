@@ -4,6 +4,7 @@
         "pipeline.h": "c",
         "vmem_server.h": "c",
         "vmem_config.h": "c",
-        "vmem.h": "c"
+        "vmem.h": "c",
+        "tester.pb-c.h": "c"
     }
 }
