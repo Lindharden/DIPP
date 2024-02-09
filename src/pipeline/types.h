@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 typedef struct Data {
+    long mtype;
     int value;
 } Data;
 

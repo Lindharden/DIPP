@@ -322,11 +322,12 @@ void run_pipeline(void)
 
     // Prepare the data
     Data data;
+    data.mtype = 1;
     data.value = 55;
     
     // create msg queue
     int msg_queue_id;
-    if ((msg_queue_id = msgget(69, 0666 | IPC_CREAT)) == -1) {
+    if ((msg_queue_id = msgget(68, 0666 | IPC_CREAT)) == -1) {
         perror("msgget error");
     }
 
