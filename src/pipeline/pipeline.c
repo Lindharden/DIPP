@@ -8,11 +8,13 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 #include "types.h"
 #include "pipeline.h"
 #include "../param_config.h"
 #include "../vmem_config.h"
-#include "../protos/tester.pb-c.h"
 #include "../protos/config.pb-c.h"
 
 // Error codes
@@ -110,8 +112,6 @@ int executePipeline(Pipeline *pipeline, Data *data, int values[]) {
     for (size_t i = 0; i < pipeline->size; ++i) {
         ProcessFunction func = pipeline->functions[i];
 
-        // Get the parameter value using param_get_uint8
-        // uint8_t paramValue = param_get_uint8(params[values[i] - 1]);
         int initial_buf_size = 200;
         uint8_t buf[initial_buf_size];
         param_get_data(&proto_data, buf, initial_buf_size);
@@ -120,11 +120,6 @@ int executePipeline(Pipeline *pipeline, Data *data, int values[]) {
         // allocate trimmed buffer and copy data
         uint8_t trimmed_buf[buf_size];
         trim_buffer(trimmed_buf, buf, buf_size);
-
-        // unpack parameters
-        // Person *unpacked_jepp = person__unpack(NULL, buf_size, trimmed_buf);
-        
-        // int paramValue = unpacked_jepp->id;
 
         // find specific value from key in protodata
         ModuleConfig *unpacked_config = module_config__unpack(NULL, buf_size, trimmed_buf);
@@ -255,18 +250,9 @@ void check_run(void) {
     }
 }
 
-void run_pipeline(void) {
-    // Person example
-    Person jepp = PERSON__INIT;
-    jepp.name = "Jepbar";
-    jepp.id = 69;
-    jepp.email = "jepli@itu.dk0";
-    size_t len = person__get_packed_size(&jepp);
-    uint8_t buf[len];
-    person__pack(&jepp, buf);
-    //param_set_data(&proto_data, buf, len);
-
-    // Module parameter config example
+void moduleConfigurations()
+{
+    // Module parameter config example (should be defined as a generic CSH method)
     ModuleConfig compression_config = MODULE_CONFIG__INIT;
     ConfigParameter compression_rate = CONFIG_PARAMETER__INIT;
     ConfigParameter compression_method = CONFIG_PARAMETER__INIT;
@@ -284,6 +270,10 @@ void run_pipeline(void) {
     uint8_t bufConfig[lenConfig];
     module_config__pack(&compression_config, bufConfig);
     param_set_data(&proto_data, bufConfig, lenConfig);
+}
+
+void run_pipeline(void) {
+    moduleConfigurations();
 
     int functionLimit = 10;
     void *functionPointers[functionLimit];
