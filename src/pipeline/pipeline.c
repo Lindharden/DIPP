@@ -33,6 +33,14 @@ PARAM_DEFINE_STATIC_RAM(PARAMID_MODULE_PARAM_4, module_param_4, PARAM_TYPE_UINT8
 PARAM_DEFINE_STATIC_RAM(PARAMID_MODULE_PARAM_5, module_param_5, PARAM_TYPE_UINT8, -1, 0, PM_CONF, NULL, NULL, &_module_param_5, "Module parameter");
 PARAM_DEFINE_STATIC_RAM(PARAMID_MODULE_PARAM_6, module_param_6, PARAM_TYPE_UINT8, -1, 0, PM_CONF, NULL, NULL, &_module_param_6, "Module parameter");
 
+void callback_run(param_t * param, int index) {
+    if (param_get_uint8(param) > 0)
+    {
+        run_pipeline();
+        param_set_uint8(param, 0);
+    }
+}
+
 PARAM_DEFINE_STATIC_VMEM(9, config_str, PARAM_TYPE_STRING, 200 ,0, PM_CONF, NULL, NULL, config, VMEM_CONF_CONFIG, NULL);
 PARAM_DEFINE_STATIC_VMEM(10, proto_data, PARAM_TYPE_DATA, 200 ,0, PM_CONF, NULL, NULL, proto, VMEM_CONF_PROTO, NULL);
 
@@ -40,7 +48,7 @@ static param_t* params[] = {&module_param_1, &module_param_2, &module_param_3, &
 
 /* Define a pipeline_run parameter */
 static uint8_t _pipeline_run = 0;
-PARAM_DEFINE_STATIC_RAM(PARAMID_PIPELINE_RUN, pipeline_run, PARAM_TYPE_UINT8, -1, 0, PM_CONF, NULL, NULL, &_pipeline_run, "Set the pipeline to execute the file");
+PARAM_DEFINE_STATIC_RAM(PARAMID_PIPELINE_RUN, pipeline_run, PARAM_TYPE_UINT8, -1, 0, PM_CONF, callback_run, NULL, &_pipeline_run, "Set the pipeline to execute the file");
 
 void initializePipeline(Pipeline *pipeline, ProcessFunction *funcs, size_t size) {
     pipeline->functions = malloc(size * sizeof(ProcessFunction));

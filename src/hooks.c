@@ -3,7 +3,7 @@
 #include "pipeline/pipeline.h"
 
 void hook_onehz(void) {
-    check_run();
+    // check_run();
 }
 
 /* 
