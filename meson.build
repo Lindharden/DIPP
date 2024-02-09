@@ -19,7 +19,6 @@ sources = files([
     'src/csp_hooks.c',
     'src/pipeline/pipeline.c',
     'src/vmem_config.c',
-	'protos/tester.pb-c.c',
 	'protos/config.pb-c.c',
 ])
 
