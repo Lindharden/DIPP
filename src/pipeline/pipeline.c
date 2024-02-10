@@ -60,7 +60,7 @@ void initializePipeline(Pipeline *pipeline, ProcessFunction *funcs, size_t size)
     pipeline->size = size;
 }
 
-int executeModuleInProcess(ProcessFunction func, int input, int *outputPipe, uint8_t paramValue)
+int executeModuleInProcess(ProcessFunction func, ImageBatch *input, int *outputPipe, uint8_t paramValue)
 {
     // Create a new process
     pid_t pid = fork();
@@ -68,7 +68,7 @@ int executeModuleInProcess(ProcessFunction func, int input, int *outputPipe, uin
     if (pid == 0)
     {
         // Child process: Execute the module function
-        int result = func(input, paramValue);
+        ImageBatch result = func(input, paramValue);
         write(outputPipe[1], &result, sizeof(result)); // Write the result to the pipe
         exit(EXIT_SUCCESS);
     }
@@ -119,7 +119,7 @@ void trim_buffer(uint8_t *buf, uint8_t *old_buf, size_t buf_size)
     }
 }
 
-int executePipeline(Pipeline *pipeline, Data *data, int values[])
+int executePipeline(Pipeline *pipeline, ImageBatch *data, int values[])
 {
     int outputPipe[2]; // Pipe for inter-process communication
     pipe(outputPipe);
@@ -164,7 +164,7 @@ int executePipeline(Pipeline *pipeline, Data *data, int values[])
 
         int paramValue = found_parameter->int_value;
         paramValue = param_get_uint8(params[i + 1]);
-        int module_status = executeModuleInProcess(func, data->value, outputPipe, paramValue);
+        int module_status = executeModuleInProcess(func, data, outputPipe, paramValue);
 
         if (module_status == FAILURE)
         {
@@ -174,7 +174,7 @@ int executePipeline(Pipeline *pipeline, Data *data, int values[])
         }
 
         // Read the result from the pipe
-        read(outputPipe[0], &data->value, sizeof(data->value));
+        read(outputPipe[0], &data, sizeof(data));
     }
 
     close(outputPipe[0]); // Close the read end of the pipe
@@ -321,10 +321,17 @@ void run_pipeline(void)
     initializePipeline(&pipeline, functionPointers, numModules);
 
     // Prepare the data
-    Data data;
+    ImageBatch data;
     data.mtype = 1;
-    data.value = 55;
-    
+    data.height = 3;
+    data.width = 3;
+    data.channels = 1;
+    data.num_images = 1;
+    size_t data_size = data.height * data.width * data.channels * data.num_images;
+    data.data = (unsigned char *)malloc(data_size);
+    unsigned char img[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
+    memcpy(data.data, img, data_size);
+
     // create msg queue
     int msg_queue_id;
     if ((msg_queue_id = msgget(68, 0666 | IPC_CREAT)) == -1) {
@@ -337,7 +344,7 @@ void run_pipeline(void)
     }
     
     // recieve msg from queue
-    Data datarcv;
+    ImageBatch datarcv;
     if (msgrcv(msg_queue_id, &datarcv, sizeof(data), 1, 0) == -1) {
         perror("msgrcv error");
     }
@@ -353,7 +360,7 @@ void run_pipeline(void)
     }
 
     // Print resulting data
-    printf("Resulting data value: %d\n", datarcv.value);
+    printf("Resulting data value: %c\n", datarcv.data[0]);
 
     // Clean up
     free(pipeline.functions);

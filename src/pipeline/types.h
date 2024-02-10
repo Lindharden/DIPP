@@ -2,13 +2,18 @@
 #define TYPES.H
 
 #include <stdlib.h>
+#include <stdint.h>
 
-typedef struct Data {
+typedef struct ImageBatch {
     long mtype;
-    int value;
-} Data;
+    int height;
+    int width;
+    int channels;
+    int num_images;
+    unsigned char *data; // batched image data (255 different values)
+} ImageBatch;
 
-typedef int (*ProcessFunction)(Data *, uint8_t);
+typedef ImageBatch (*ProcessFunction)(ImageBatch *, uint8_t);
 
 typedef struct {
     ProcessFunction* functions;
