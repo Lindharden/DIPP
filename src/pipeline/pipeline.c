@@ -16,6 +16,11 @@
 #include "../param_config.h"
 #include "../vmem_config.h"
 #include "../protos/config.pb-c.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 
 // Error codes
 #define SUCCESS 0
@@ -69,6 +74,8 @@ int executeModuleInProcess(ProcessFunction func, ImageBatch *input, int *outputP
     {
         // Child process: Execute the module function
         ImageBatch result = func(input, paramValue);
+        // size_t data_size = sizeof(result);
+        // write(outputPipe[1], &data_size, sizeof(data_size)); // Write data size to pipe
         write(outputPipe[1], &result, sizeof(result)); // Write the result to the pipe
         exit(EXIT_SUCCESS);
     }
@@ -173,8 +180,9 @@ int executePipeline(Pipeline *pipeline, ImageBatch *data, int values[])
             return i + 1;
         }
 
-        // Read the result from the pipe
-        read(outputPipe[0], &data, sizeof(data));
+        // size_t size;
+        // read(outputPipe[0], &size, sizeof(size)); // Read size from pipe
+        read(outputPipe[0], &data, sizeof(data)); // Read the result from the pipe
     }
 
     close(outputPipe[0]); // Close the read end of the pipe
@@ -304,6 +312,17 @@ void moduleConfigurations()
     param_set_data(&proto_data, bufConfig, lenConfig);
 }
 
+void saveImage(const char *filename, const ImageBatch *batch) {
+    // Determine the desired output format (e.g., PNG)
+    int stride = batch->width * batch->channels;
+    int success = stbi_write_png(filename, batch->width, batch->height, batch->channels, batch->data, stride);
+    if (!success) {
+        fprintf(stderr, "Error writing image to %s\n", filename);
+    } else {
+        printf("Image saved as %s\n", filename);
+    }
+}
+
 void run_pipeline(void)
 {
     moduleConfigurations();
@@ -323,14 +342,25 @@ void run_pipeline(void)
     // Prepare the data
     ImageBatch data;
     data.mtype = 1;
-    data.height = 3;
-    data.width = 3;
-    data.channels = 1;
+    // data.height = 3;
+    // data.width = 3;
+    // data.channels = 1;
+    // data.num_images = 1;
+    // size_t data_size = data.height * data.width * data.channels * data.num_images;
+    // data.data = (unsigned char *)malloc(data_size);
+    // unsigned char img[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
+    // memcpy(data.data, img, data_size);
+    // Populate the data array with image data
+    const char *filename = "image.png"; // Change this to your image file
+    int image_width, image_height, image_channels;
+    unsigned char *image_data = stbi_load(filename, &image_width, &image_height, &image_channels, STBI_rgb_alpha);
+    data.height = image_height;
+    data.width = image_width;
+    data.channels = image_channels;
     data.num_images = 1;
-    size_t data_size = data.height * data.width * data.channels * data.num_images;
+    size_t data_size = image_height * image_width * image_channels * 1;
     data.data = (unsigned char *)malloc(data_size);
-    unsigned char img[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
-    memcpy(data.data, img, data_size);
+    memcpy(data.data, image_data, data_size);
 
     // create msg queue
     int msg_queue_id;
@@ -358,6 +388,8 @@ void run_pipeline(void)
         printf("Module named '%s' caused a failure in the pipeline\n", modules[status - 1]);
         return;
     }
+
+    saveImage("output.png", &datarcv);
 
     // Print resulting data
     printf("Resulting data value: %c\n", datarcv.data[0]);
