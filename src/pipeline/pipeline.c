@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <sys/shm.h>
 #include "types.h"
 #include "pipeline.h"
 #include "../param_config.h"
@@ -20,7 +21,6 @@
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
-
 
 // Error codes
 #define SUCCESS 0
@@ -74,9 +74,9 @@ int executeModuleInProcess(ProcessFunction func, ImageBatch *input, int *outputP
     {
         // Child process: Execute the module function
         ImageBatch result = func(input, paramValue);
-        // size_t data_size = sizeof(result);
-        // write(outputPipe[1], &data_size, sizeof(data_size)); // Write data size to pipe
-        write(outputPipe[1], &result, sizeof(result)); // Write the result to the pipe
+        size_t data_size = sizeof(result);
+        write(outputPipe[1], &data_size, sizeof(data_size)); // Write size of result object
+        write(outputPipe[1], &result, data_size);            // Write the result to the pipe
         exit(EXIT_SUCCESS);
     }
     else
@@ -135,6 +135,7 @@ int executePipeline(Pipeline *pipeline, ImageBatch *data, int values[])
     {
         ProcessFunction func = pipeline->functions[i];
 
+        // initialize buffer for module parameters
         int initial_buf_size = 200;
         uint8_t buf[initial_buf_size];
         param_get_data(&proto_data, buf, initial_buf_size);
@@ -180,9 +181,16 @@ int executePipeline(Pipeline *pipeline, ImageBatch *data, int values[])
             return i + 1;
         }
 
-        // size_t size;
-        // read(outputPipe[0], &size, sizeof(size)); // Read size from pipe
-        read(outputPipe[0], &data, sizeof(data)); // Read the result from the pipe
+        size_t size;
+        read(outputPipe[0], &size, sizeof(size)); // Read size from pipe
+        ImageBatch result;
+        read(outputPipe[0], &result, size); // Read the result from the pipe
+        data->channels = result.channels;
+        data->width = result.width;
+        data->height = result.height;
+        data->num_images = result.num_images;
+        data->data_size = result.data_size;
+        data->data = result.data;
     }
 
     close(outputPipe[0]); // Close the read end of the pipe
@@ -272,6 +280,7 @@ int loadModulesWithParams(const char *configFile, void *functionPointers[], char
         if (functionPointers[i] == NULL)
         {
             // Handle loading failure
+
             fprintf(stderr, "Error: Unable to load module %s with parameter %s.\n", modules[i], values[i]);
         }
     }
@@ -312,13 +321,17 @@ void moduleConfigurations()
     param_set_data(&proto_data, bufConfig, lenConfig);
 }
 
-void saveImage(const char *filename, const ImageBatch *batch) {
+void saveImage(const char *filename, const ImageBatch *batch)
+{
     // Determine the desired output format (e.g., PNG)
     int stride = batch->width * batch->channels;
     int success = stbi_write_png(filename, batch->width, batch->height, batch->channels, batch->data, stride);
-    if (!success) {
+    if (!success)
+    {
         fprintf(stderr, "Error writing image to %s\n", filename);
-    } else {
+    }
+    else
+    {
         printf("Image saved as %s\n", filename);
     }
 }
@@ -359,23 +372,29 @@ void run_pipeline(void)
     data.channels = image_channels;
     data.num_images = 1;
     size_t data_size = image_height * image_width * image_channels * 1;
-    data.data = (unsigned char *)malloc(data_size);
-    memcpy(data.data, image_data, data_size);
+    data.data_size = data_size;
+    int shmid = shmget(1234, 1024 * 1024 * 10, IPC_CREAT | 0666);
+    char *shmaddr = shmat(shmid, NULL, 0);
+    data.data = shmaddr;
+    memcpy(shmaddr, image_data, data_size); // Copy image batch data to shared memory
 
     // create msg queue
     int msg_queue_id;
-    if ((msg_queue_id = msgget(68, 0666 | IPC_CREAT)) == -1) {
+    if ((msg_queue_id = msgget(68, 0666 | IPC_CREAT)) == -1)
+    {
         perror("msgget error");
     }
 
     // send msg to queue
-    if (msgsnd(msg_queue_id, &data, sizeof(data), 0) == -1) {
+    if (msgsnd(msg_queue_id, &data, sizeof(data), 0) == -1)
+    {
         perror("msgsnd error");
     }
-    
+
     // recieve msg from queue
     ImageBatch datarcv;
-    if (msgrcv(msg_queue_id, &datarcv, sizeof(data), 1, 0) == -1) {
+    if (msgrcv(msg_queue_id, &datarcv, sizeof(data), 1, 0) == -1)
+    {
         perror("msgrcv error");
     }
 

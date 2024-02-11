@@ -10,6 +10,7 @@ typedef struct ImageBatch {
     int width;
     int channels;
     int num_images;
+    size_t data_size;
     unsigned char *data; // batched image data (255 different values)
 } ImageBatch;
 

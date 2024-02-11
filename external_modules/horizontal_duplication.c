@@ -23,8 +23,8 @@ ImageBatch run(ImageBatch *batch, int param) {
             // Duplicate the row param times
             for (int k = 1; k <= param; k++) {
                 memcpy(&enlargedBatch.data[i * enlargedBatch.height * enlargedBatch.width * enlargedBatch.channels + (j * enlargedBatch.width + k * batch->width) * enlargedBatch.channels],
-                       &batch->data[i * batch->height * batch->width * batch->channels + j * batch->width * batch->channels],
-                       batch->height * batch->width * batch->channels);
+                    &batch->data[i * batch->height * batch->width * batch->channels + j * batch->width * batch->channels],
+                    batch->width * batch->channels); // Copy a single row's worth of data
             }
         }
     }

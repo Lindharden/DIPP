@@ -1,1 +1,1 @@
-scofus_comp:module_param_1
+bw_convert:module_param_1

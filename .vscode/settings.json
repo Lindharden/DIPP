@@ -5,6 +5,9 @@
         "vmem_server.h": "c",
         "vmem_config.h": "c",
         "vmem.h": "c",
-        "tester.pb-c.h": "c"
+        "tester.pb-c.h": "c",
+        "stdlib.h": "c",
+        "stdio.h": "c",
+        "msg.h": "c"
     }
 }
