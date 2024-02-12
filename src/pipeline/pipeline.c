@@ -350,42 +350,33 @@ void run_pipeline(void)
     Pipeline pipeline;
     initializePipeline(&pipeline, functionPointers, numModules);
 
-    // Prepare the data
-    ImageBatch data;
-    data.mtype = 1;
-    const char *filename = "image.png"; // Change this to your image file
-    int image_width, image_height, image_channels;
-    unsigned char *image_data = stbi_load(filename, &image_width, &image_height, &image_channels, STBI_rgb_alpha);
-    data.height = image_height;
-    data.width = image_width;
-    data.channels = image_channels;
-    data.num_images = 1;
-    data.shm_key = 1234; // testing key
-    size_t data_size = image_height * image_width * image_channels * 1;
-    int shmid = shmget(data.shm_key, 1024 * 1024 * 10, IPC_CREAT | 0666);
-    char *shmaddr = shmat(shmid, NULL, 0);
-    data.data = shmaddr;
-    memcpy(shmaddr, image_data, data_size); // Copy image batch data to shared memory
-
-    // create msg queue
+    // Create msg queue
     int msg_queue_id;
-    if ((msg_queue_id = msgget(68, 0666 | IPC_CREAT)) == -1)
+    int MSG_QUEUE_KEY = 68;
+    if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0)) == -1)
     {
-        perror("msgget error");
+        printf("Could not get MSG queue");
+        perror("Could not get MSG queue");
     }
 
-    // send msg to queue
-    if (msgsnd(msg_queue_id, &data, sizeof(data) - sizeof(long), 0) == -1)
-    {
-        perror("msgsnd error");
-    }
-
-    // recieve msg from queue
+    // Recieve msg from queue
     ImageBatch datarcv;
-    if (msgrcv(msg_queue_id, &datarcv, sizeof(data) - sizeof(long), 1, 0) == -1)
+    if (msgrcv(msg_queue_id, &datarcv, sizeof(ImageBatch) - sizeof(long), 1, 0) == -1)
     {
+        printf("msgrcv error");
         perror("msgrcv error");
     }
+
+    // Recieve shared memory id from recieved data
+    int shmid;
+    if (shmid = shmget(datarcv.shm_key, 0, 0) == -1) 
+    {
+        printf("Could not get shared memory");
+        perror("Could not get shared memory");
+    }
+
+    // Attach to shared memory from id
+    int *shmaddr = shmat(shmid, NULL, 0);
 
     // Execute the pipeline with parameter values
     int status = executePipeline(&pipeline, &datarcv, values);
