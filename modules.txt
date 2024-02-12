@@ -1,1 +1,2 @@
 bw_convert:module_param_1
+flip_horizontally:module_param_2

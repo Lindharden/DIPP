@@ -2,31 +2,42 @@
 #include <stdlib.h>
 #include "../src/pipeline/types.h"
 
-ImageBatch run(ImageBatch *batch, int param) {    
-    ImageBatch mirroredBatch;
-    mirroredBatch.mtype = batch->mtype;
-    mirroredBatch.height = batch->height;
-    mirroredBatch.width = batch->width; // Width remains the same
-    mirroredBatch.channels = batch->channels;
-    mirroredBatch.shm_key = batch->shm_key;
-    mirroredBatch.num_images = batch->num_images;
-    mirroredBatch.data = batch->data;
+ImageBatch run(const ImageBatch *input_batch, int param) {
+    ImageBatch mirrored_batch;
+    mirrored_batch.mtype = input_batch->mtype;
+    mirrored_batch.width = input_batch->width;
+    mirrored_batch.height = input_batch->height;
+    mirrored_batch.channels = input_batch->channels;
+    mirrored_batch.shm_key = input_batch->shm_key;
+    mirrored_batch.num_images = input_batch->num_images;
+    mirrored_batch.data = input_batch->data;
 
-    // Mirror the image horizontally
-    for (int i = 0; i < batch->num_images; i++) {
-        for (int j = 0; j < batch->height; j++) {
-            // Calculate source and destination offsets for memcpy
-            int src_offset = i * batch->height * batch->width * batch->channels + j * batch->width * batch->channels;
-            int dest_offset = i * mirroredBatch.height * mirroredBatch.width * mirroredBatch.channels + j * mirroredBatch.width * mirroredBatch.channels;
+    // Calculate the size of the entire batch
+    int data_size = input_batch->width * input_batch->height * input_batch->channels * input_batch->num_images;   
+    unsigned char *new_data = (unsigned char *)malloc(data_size);
 
-            // Copy the row in reverse order
-            for (int k = 0; k < batch->width; k++) {
-                for (int c = 0; c < batch->channels; c++) {
-                    mirroredBatch.data[dest_offset + (batch->width - k - 1) * batch->channels + c] = batch->data[src_offset + k * batch->channels + c];
+    // Calculate the size of each image in bytes
+    size_t image_size = input_batch->height * input_batch->width * input_batch->channels;
+
+    // Mirror each image horizontally
+    for (int i = 0; i < input_batch->num_images; ++i) {
+        unsigned char *image_data = &mirrored_batch.data[i * image_size];
+        for (int y = 0; y < input_batch->height; ++y) {
+            for (int x = 0; x < input_batch->width / 2; ++x) {
+                // Swap pixel values horizontally
+                for (int c = 0; c < input_batch->channels; ++c) {
+                    unsigned char temp = image_data[(y * input_batch->width + x) * input_batch->channels + c];
+                    new_data[(y * input_batch->width + x) * input_batch->channels + c] =
+                        image_data[(y * input_batch->width + (input_batch->width - 1 - x)) * input_batch->channels + c];
+                    new_data[(y * input_batch->width + (input_batch->width - 1 - x)) * input_batch->channels + c] = temp;
                 }
             }
         }
     }
 
-    return mirroredBatch;
+    memcpy(input_batch->data, new_data, data_size);
+
+    free(new_data);
+
+    return mirrored_batch;
 }
