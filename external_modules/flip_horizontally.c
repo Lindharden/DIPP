@@ -8,6 +8,7 @@ ImageBatch run(ImageBatch *batch, int param) {
     mirroredBatch.height = batch->height;
     mirroredBatch.width = batch->width; // Width remains the same
     mirroredBatch.channels = batch->channels;
+    mirroredBatch.shm_key = batch->shm_key;
     mirroredBatch.num_images = batch->num_images;
     mirroredBatch.data = batch->data;
 

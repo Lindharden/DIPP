@@ -7,6 +7,7 @@ ImageBatch run(ImageBatch *batch, int param) {
     enlargedBatch.mtype = batch->mtype;
     enlargedBatch.height = batch->height;
     enlargedBatch.width = batch->width * (1 + param); // Increase width by param times
+    enlargedBatch.shm_key = batch->shm_key;
     enlargedBatch.channels = batch->channels;
     enlargedBatch.num_images = batch->num_images;
 

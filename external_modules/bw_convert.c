@@ -9,6 +9,7 @@ ImageBatch run(ImageBatch *batch, int param) {
     bwBatch.height = batch->height;
     bwBatch.width = batch->width;
     bwBatch.channels = 1; // Black and white image will have only one channel
+    bwBatch.shm_key = batch->shm_key;
     bwBatch.num_images = batch->num_images;
     bwBatch.data = batch->data;
 

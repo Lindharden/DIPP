@@ -185,6 +185,7 @@ int executePipeline(Pipeline *pipeline, ImageBatch *data, int values[])
         data->channels = result.channels;
         data->width = result.width;
         data->height = result.height;
+        data->shm_key = result.shm_key;
         data->num_images = result.num_images;
         data->data = result.data;
     }
@@ -359,8 +360,9 @@ void run_pipeline(void)
     data.width = image_width;
     data.channels = image_channels;
     data.num_images = 1;
+    data.shm_key = 1234; // testing key
     size_t data_size = image_height * image_width * image_channels * 1;
-    int shmid = shmget(1234, 1024 * 1024 * 10, IPC_CREAT | 0666);
+    int shmid = shmget(data.shm_key, 1024 * 1024 * 10, IPC_CREAT | 0666);
     char *shmaddr = shmat(shmid, NULL, 0);
     data.data = shmaddr;
     memcpy(shmaddr, image_data, data_size); // Copy image batch data to shared memory
@@ -373,14 +375,14 @@ void run_pipeline(void)
     }
 
     // send msg to queue
-    if (msgsnd(msg_queue_id, &data, sizeof(data), 0) == -1)
+    if (msgsnd(msg_queue_id, &data, sizeof(data) - sizeof(long), 0) == -1)
     {
         perror("msgsnd error");
     }
 
     // recieve msg from queue
     ImageBatch datarcv;
-    if (msgrcv(msg_queue_id, &datarcv, sizeof(data), 1, 0) == -1)
+    if (msgrcv(msg_queue_id, &datarcv, sizeof(data) - sizeof(long), 1, 0) == -1)
     {
         perror("msgrcv error");
     }
