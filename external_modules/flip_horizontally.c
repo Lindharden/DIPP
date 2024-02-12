@@ -9,7 +9,6 @@ ImageBatch run(ImageBatch *batch, int param) {
     mirroredBatch.width = batch->width; // Width remains the same
     mirroredBatch.channels = batch->channels;
     mirroredBatch.num_images = batch->num_images;
-    mirroredBatch.data_size = batch->data_size;
     mirroredBatch.data = batch->data;
 
     // Mirror the image horizontally

@@ -12,12 +12,13 @@ ImageBatch run(ImageBatch *batch, int param) {
     bwBatch.num_images = batch->num_images;
     bwBatch.data = batch->data;
 
+    int batch_size = batch->width * batch->height * batch->channels * batch->num_images;
+
     // Calculate the size of the black and white image data
     size_t bwDataSize = bwBatch.height * bwBatch.width * bwBatch.channels * bwBatch.num_images;
-    bwBatch.data_size = bwDataSize;
     unsigned char *new_data = (unsigned char *)malloc(bwDataSize);
 
-    for (int i = 0; i < batch->data_size; i += batch->channels) {
+    for (int i = 0; i < batch_size; i += batch->channels) {
         // Extract color components from the original pixel
         unsigned char r = batch->data[i];
         unsigned char g = batch->data[i + 1];
@@ -30,6 +31,8 @@ ImageBatch run(ImageBatch *batch, int param) {
     }
 
     memcpy(batch->data, new_data, bwDataSize);
+
+    free(new_data);
 
     return bwBatch;
 }

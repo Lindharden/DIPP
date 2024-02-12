@@ -75,7 +75,6 @@ int executeModuleInProcess(ProcessFunction func, ImageBatch *input, int *outputP
         // Child process: Execute the module function
         ImageBatch result = func(input, paramValue);
         size_t data_size = sizeof(result);
-        write(outputPipe[1], &data_size, sizeof(data_size)); // Write size of result object
         write(outputPipe[1], &result, data_size);            // Write the result to the pipe
         exit(EXIT_SUCCESS);
     }
@@ -181,15 +180,12 @@ int executePipeline(Pipeline *pipeline, ImageBatch *data, int values[])
             return i + 1;
         }
 
-        size_t size;
-        read(outputPipe[0], &size, sizeof(size)); // Read size from pipe
         ImageBatch result;
-        read(outputPipe[0], &result, size); // Read the result from the pipe
+        read(outputPipe[0], &result, sizeof(result)); // Read the result from the pipe
         data->channels = result.channels;
         data->width = result.width;
         data->height = result.height;
         data->num_images = result.num_images;
-        data->data_size = result.data_size;
         data->data = result.data;
     }
 
@@ -319,6 +315,7 @@ void moduleConfigurations()
     uint8_t bufConfig[lenConfig];
     module_config__pack(&compression_config, bufConfig);
     param_set_data(&proto_data, bufConfig, lenConfig);
+    free(compression_config.parameters);
 }
 
 void saveImage(const char *filename, const ImageBatch *batch)
@@ -355,15 +352,6 @@ void run_pipeline(void)
     // Prepare the data
     ImageBatch data;
     data.mtype = 1;
-    // data.height = 3;
-    // data.width = 3;
-    // data.channels = 1;
-    // data.num_images = 1;
-    // size_t data_size = data.height * data.width * data.channels * data.num_images;
-    // data.data = (unsigned char *)malloc(data_size);
-    // unsigned char img[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
-    // memcpy(data.data, img, data_size);
-    // Populate the data array with image data
     const char *filename = "image.png"; // Change this to your image file
     int image_width, image_height, image_channels;
     unsigned char *image_data = stbi_load(filename, &image_width, &image_height, &image_channels, STBI_rgb_alpha);
@@ -372,7 +360,6 @@ void run_pipeline(void)
     data.channels = image_channels;
     data.num_images = 1;
     size_t data_size = image_height * image_width * image_channels * 1;
-    data.data_size = data_size;
     int shmid = shmget(1234, 1024 * 1024 * 10, IPC_CREAT | 0666);
     char *shmaddr = shmat(shmid, NULL, 0);
     data.data = shmaddr;
@@ -412,6 +399,10 @@ void run_pipeline(void)
 
     // Print resulting data
     printf("Resulting data value: %c\n", datarcv.data[0]);
+
+    // Detach and free shared memory
+    shmdt(shmaddr);
+    shmctl(shmid, IPC_RMID, NULL);
 
     // Clean up
     free(pipeline.functions);
