@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#include "../protos/module_config.pb-c.h"
+#include "../../protos/module_config.pb-c.h"
 
 typedef struct ImageBatch {
     long mtype;
