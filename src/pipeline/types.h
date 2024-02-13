@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include "../protos/module_config.pb-c.h"
 
 typedef struct ImageBatch {
     long mtype;
@@ -14,7 +15,7 @@ typedef struct ImageBatch {
     unsigned char *data; // batched image data (255 different values)
 } ImageBatch;
 
-typedef ImageBatch (*ProcessFunction)(ImageBatch *, uint8_t);
+typedef ImageBatch (*ProcessFunction)(ImageBatch *, ModuleConfig *);
 
 typedef struct {
     ProcessFunction* functions;
