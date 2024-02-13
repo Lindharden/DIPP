@@ -369,7 +369,7 @@ void run_pipeline(void)
 
     // Recieve shared memory id from recieved data
     int shmid;
-    if (shmid = shmget(datarcv.shm_key, 0, 0) == -1) 
+    if ((shmid = shmget(datarcv.shm_key, 0, 0)) == -1) 
     {
         printf("Could not get shared memory");
         perror("Could not get shared memory");
@@ -377,6 +377,7 @@ void run_pipeline(void)
 
     // Attach to shared memory from id
     int *shmaddr = shmat(shmid, NULL, 0);
+    datarcv.data = shmaddr; // retrieve correct address in shared memory
 
     // Execute the pipeline with parameter values
     int status = executePipeline(&pipeline, &datarcv, values);
