@@ -8,6 +8,7 @@
         "tester.pb-c.h": "c",
         "stdlib.h": "c",
         "stdio.h": "c",
-        "msg.h": "c"
+        "msg.h": "c",
+        "module_config.pb-c.h": "c"
     }
 }
