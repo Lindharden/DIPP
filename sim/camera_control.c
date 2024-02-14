@@ -9,7 +9,7 @@
 int main()
 {
     char input[100];
-
+    int i = 1;
     while (1)
     {
         printf("Type whatever to send image. Type 'quit' to exit.\n");
@@ -31,7 +31,7 @@ int main()
         data.width = image_width;
         data.channels = image_channels;
         data.num_images = 1;
-        data.shm_key = 1234; // testing key
+        data.shm_key = i++; // testing key
         size_t data_size = image_height * image_width * image_channels * 1;
         int shmid = shmget(data.shm_key, 1024 * 1024 * 10, IPC_CREAT | 0666);
         char *shmaddr = shmat(shmid, NULL, 0);

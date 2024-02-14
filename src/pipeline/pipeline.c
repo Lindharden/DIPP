@@ -334,6 +334,19 @@ void run_pipeline(void)
         perror("Could not get MSG queue");
     }
 
+    // Check if there are messages in the queue
+    struct msqid_ds buf;
+    if (msgctl(msg_queue_id, IPC_STAT, &buf) == -1) {
+        printf("msgctl error");
+        perror("msgctl error");
+    }
+
+    if (buf.msg_qnum <= 0) {
+        printf("No items in the msg queue");
+        perror("No items in the msg queue");
+        goto cleanup;
+    }
+
     // Recieve msg from queue
     ImageBatch datarcv;
     if (msgrcv(msg_queue_id, &datarcv, sizeof(ImageBatch) - sizeof(long), 1, 0) == -1)
@@ -370,6 +383,7 @@ void run_pipeline(void)
     shmdt(shmaddr);
     shmctl(shmid, IPC_RMID, NULL);
 
+cleanup:
     // Clean up functions
     free(pipeline.functions);
 }
