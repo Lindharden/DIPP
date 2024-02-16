@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "../src/pipeline/types.h"
 
-ImageBatch run(ImageBatch *batch, int param) {
+ImageBatch run(const ImageBatch *batch, ModuleConfig *config) {
     // Create a new ImageBatch object to store the black and white image
     ImageBatch bwBatch;
     bwBatch.mtype = batch->mtype;

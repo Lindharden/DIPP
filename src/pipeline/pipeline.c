@@ -69,7 +69,7 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outp
         // Child process: Execute the module function
         ImageBatch result = func(input, config);
         size_t data_size = sizeof(result);
-        write(outputPipe[1], &result, data_size);            // Write the result to the pipe
+        write(outputPipe[1], &result, data_size); // Write the result to the pipe
         exit(EXIT_SUCCESS);
     }
     else
@@ -140,7 +140,7 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data, int param_ids[])
 
         // find specific value from key in protodata
         ModuleConfig *unpacked_config = module_config__unpack(NULL, buf_size, trimmed_buf);
-        
+
         int module_status = execute_module_in_process(func, data, outputPipe, unpacked_config);
 
         if (module_status == FAILURE)
@@ -169,7 +169,7 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data, int param_ids[])
 // Function to parse a configuration file with module and parameter names
 int unpack_configurations(char *modules[], int param_ids[])
 {
-     // initialize buffer for module parameters
+    // initialize buffer for module parameters
     int initial_buf_size = 200;
     uint8_t buf[initial_buf_size];
     param_get_data(&pipeline_config, buf, initial_buf_size);
@@ -183,7 +183,8 @@ int unpack_configurations(char *modules[], int param_ids[])
     PipelineDefinition *unpacked_config = pipeline_definition__unpack(NULL, buf_size, trimmed_buf);
 
     // save module name and param id for each module definition
-    for (size_t i = 0; i < unpacked_config->n_modules; i++) {
+    for (size_t i = 0; i < unpacked_config->n_modules; i++)
+    {
         ModuleDefinition *unpacked_definition = unpacked_config->modules[i];
         // the 'order' fields should be incremental
         modules[unpacked_definition->order - 1] = unpacked_definition->name;
@@ -265,8 +266,15 @@ void pipeline_configurations()
     size_t lenConfig = pipeline_definition__get_packed_size(&pipeline_definition);
     uint8_t bufConfig[lenConfig];
     pipeline_definition__pack(&pipeline_definition, bufConfig);
+
+    // Reset parameter value (critical if previous value was longer!)
+    char reset_buf[200];
+    memset(reset_buf, 0, sizeof(reset_buf));
+    param_set_data(&pipeline_config, reset_buf, sizeof(reset_buf));
+
+    // Set new parameter value
     param_set_data(&pipeline_config, bufConfig, lenConfig);
-    free(pipeline_definition.modules); 
+    free(pipeline_definition.modules);
 }
 
 void module_configurations()
@@ -307,16 +315,20 @@ void save_image(const char *filename, const ImageBatch *batch)
     }
 }
 
+void cleanup(Pipeline *pipeline) {
+    // Clean up functions
+    free(pipeline->functions);
+}
+
 void run_pipeline(void)
 {
-
     pipeline_configurations();
     module_configurations();
 
     int functionLimit = 10;
     void *functionPointers[functionLimit];
     char *modules[functionLimit]; // Array to store the module names
-    int param_ids[functionLimit];    // Array to store the parameters for the modules
+    int param_ids[functionLimit]; // Array to store the parameters for the modules
 
     // Load modules from the configuration file
     int numModules = load_modules_with_params(functionPointers, modules, param_ids);
@@ -327,26 +339,37 @@ void run_pipeline(void)
 
     // Create msg queue
     int msg_queue_id;
-    int MSG_QUEUE_KEY = 68;
+    int MSG_QUEUE_KEY = 70;
     if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0)) == -1)
     {
-        printf("Could not get MSG queue");
         perror("Could not get MSG queue");
+    }
+
+    // Check if there are messages in the queue
+    struct msqid_ds buf;
+    if (msgctl(msg_queue_id, IPC_STAT, &buf) == -1)
+    {
+        perror("msgctl error");
+    }
+
+    if (buf.msg_qnum <= 0)
+    {
+        perror("No items in the msg queue");
+        cleanup(&pipeline);
+        return;
     }
 
     // Recieve msg from queue
     ImageBatch datarcv;
     if (msgrcv(msg_queue_id, &datarcv, sizeof(ImageBatch) - sizeof(long), 1, 0) == -1)
     {
-        printf("msgrcv error");
         perror("msgrcv error");
     }
 
     // Recieve shared memory id from recieved data
     int shmid;
-    if ((shmid = shmget(datarcv.shm_key, 0, 0)) == -1) 
+    if ((shmid = shmget(datarcv.shm_key, 0, 0)) == -1)
     {
-        printf("Could not get shared memory");
         perror("Could not get shared memory");
     }
 
@@ -356,7 +379,7 @@ void run_pipeline(void)
 
     // Execute the pipeline with parameter values
     int status = execute_pipeline(&pipeline, &datarcv, param_ids);
-    
+
     if (status != SUCCESS)
     {
         // Print failure message
@@ -370,6 +393,5 @@ void run_pipeline(void)
     shmdt(shmaddr);
     shmctl(shmid, IPC_RMID, NULL);
 
-    // Clean up functions
-    free(pipeline.functions);
+    cleanup(&pipeline);
 }
