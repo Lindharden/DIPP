@@ -315,9 +315,13 @@ void save_image(const char *filename, const ImageBatch *batch)
     }
 }
 
+void cleanup(Pipeline *pipeline) {
+    // Clean up functions
+    free(pipeline->functions);
+}
+
 void run_pipeline(void)
 {
-
     pipeline_configurations();
     module_configurations();
 
@@ -351,7 +355,8 @@ void run_pipeline(void)
     if (buf.msg_qnum <= 0)
     {
         perror("No items in the msg queue");
-        goto cleanup;
+        cleanup(&pipeline);
+        return;
     }
 
     // Recieve msg from queue
@@ -388,7 +393,5 @@ void run_pipeline(void)
     shmdt(shmaddr);
     shmctl(shmid, IPC_RMID, NULL);
 
-cleanup:
-    // Clean up functions
-    free(pipeline.functions);
+    cleanup(&pipeline);
 }
