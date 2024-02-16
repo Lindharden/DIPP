@@ -9,7 +9,7 @@
 int main()
 {
     char input[100];
-    int i = 1;
+    int i = 150;
     while (1)
     {
         printf("Type whatever to send image. Type 'quit' to exit.\n");
@@ -24,7 +24,7 @@ int main()
         // Prepare the data
         ImageBatch data;
         data.mtype = 1;
-        const char *filename = "sim_image2.png"; // Change this to your image file
+        const char *filename = "20mb.png"; // Change this to your image file
         int image_width, image_height, image_channels;
         unsigned char *image_data = stbi_load(filename, &image_width, &image_height, &image_channels, STBI_rgb_alpha);
         data.height = image_height;
@@ -33,13 +33,13 @@ int main()
         data.num_images = 1;
         data.shm_key = i++; // testing key
         size_t data_size = image_height * image_width * image_channels * 1;
-        int shmid = shmget(data.shm_key, 1024 * 1024 * 10, IPC_CREAT | 0666);
+        int shmid = shmget(data.shm_key, data_size, IPC_CREAT | 0666);
         char *shmaddr = shmat(shmid, NULL, 0);
         memcpy(shmaddr, image_data, data_size); // Copy image batch data to shared memory
 
         // create msg queue
         int msg_queue_id;
-        if ((msg_queue_id = msgget(68, 0666 | IPC_CREAT)) == -1)
+        if ((msg_queue_id = msgget(70, 0666 | IPC_CREAT)) == -1)
         {
             perror("msgget error");
         }
