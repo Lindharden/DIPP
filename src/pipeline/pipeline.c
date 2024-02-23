@@ -23,17 +23,19 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#define DATA_PARAM_SIZE 188
+
 // Error codes
 #define SUCCESS 0
 #define FAILURE -1
 
 /* Define module specific parameters */
-PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_1, module_param_1, PARAM_TYPE_DATA, 200, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_1, NULL);
-PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_2, module_param_2, PARAM_TYPE_DATA, 200, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_2, NULL);
-PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_3, module_param_3, PARAM_TYPE_DATA, 200, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_3, NULL);
-PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_4, module_param_4, PARAM_TYPE_DATA, 200, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_4, NULL);
-PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_5, module_param_5, PARAM_TYPE_DATA, 200, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_5, NULL);
-PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_6, module_param_6, PARAM_TYPE_DATA, 200, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_6, NULL);
+PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_1, module_param_1, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_1, NULL);
+PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_2, module_param_2, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_2, NULL);
+PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_3, module_param_3, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_3, NULL);
+PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_4, module_param_4, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_4, NULL);
+PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_5, module_param_5, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_5, NULL);
+PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_6, module_param_6, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_6, NULL);
 
 void callback_run(param_t *param, int index)
 {
@@ -43,8 +45,7 @@ void callback_run(param_t *param, int index)
         param_set_uint8(param, 0);
     }
 }
-
-PARAM_DEFINE_STATIC_VMEM(PARAMID_PIPELINE_CONFIG, pipeline_config, PARAM_TYPE_DATA, 200, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_PIPELINE, NULL);
+PARAM_DEFINE_STATIC_VMEM(PARAMID_PIPELINE_CONFIG, pipeline_config, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_PIPELINE, NULL);
 
 static param_t *params[] = {&module_param_1, &module_param_2, &module_param_3, &module_param_4, &module_param_5, &module_param_6};
 
@@ -170,7 +171,7 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data, int param_ids[])
 int unpack_configurations(char *modules[], int param_ids[])
 {
     // initialize buffer for module parameters
-    int initial_buf_size = 200;
+    int initial_buf_size = DATA_PARAM_SIZE;
     uint8_t buf[initial_buf_size];
     param_get_data(&pipeline_config, buf, initial_buf_size);
     int buf_size = get_buf_size(buf, initial_buf_size);
@@ -268,7 +269,7 @@ void pipeline_configurations()
     pipeline_definition__pack(&pipeline_definition, bufConfig);
 
     // Reset parameter value (critical if previous value was longer!)
-    char reset_buf[200];
+    char reset_buf[DATA_PARAM_SIZE];
     memset(reset_buf, 0, sizeof(reset_buf));
     param_set_data(&pipeline_config, reset_buf, sizeof(reset_buf));
 
@@ -322,7 +323,7 @@ void cleanup(Pipeline *pipeline) {
 
 void run_pipeline(void)
 {
-    pipeline_configurations();
+    //pipeline_configurations();
     module_configurations();
 
     int functionLimit = 10;
