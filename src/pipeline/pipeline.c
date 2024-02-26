@@ -130,7 +130,7 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data, int param_ids[])
         ProcessFunction func = pipeline->functions[i];
 
         // initialize buffer for module parameters
-        int initial_buf_size = 200;
+        int initial_buf_size = DATA_PARAM_SIZE;
         uint8_t buf[initial_buf_size];
         param_get_data(params[param_ids[i] - 1], buf, initial_buf_size);
         int buf_size = get_buf_size(buf, initial_buf_size);
@@ -253,54 +253,6 @@ void check_run(void)
     }
 }
 
-void pipeline_configurations()
-{
-    // Pipeline configuration example (should be defined as a generic CSH method)
-    PipelineDefinition pipeline_definition = PIPELINE_DEFINITION__INIT;
-    ModuleDefinition flip_module = MODULE_DEFINITION__INIT;
-    flip_module.order = 1;
-    flip_module.name = "flip_horizontally";
-    flip_module.param_id = 1;
-    pipeline_definition.modules = malloc(sizeof(ModuleDefinition *));
-    pipeline_definition.n_modules = 1;
-    pipeline_definition.modules[0] = &flip_module;
-    size_t lenConfig = pipeline_definition__get_packed_size(&pipeline_definition);
-    uint8_t bufConfig[lenConfig];
-    pipeline_definition__pack(&pipeline_definition, bufConfig);
-
-    // Reset parameter value (critical if previous value was longer!)
-    char reset_buf[DATA_PARAM_SIZE];
-    memset(reset_buf, 0, sizeof(reset_buf));
-    param_set_data(&pipeline_config, reset_buf, sizeof(reset_buf));
-
-    // Set new parameter value
-    param_set_data(&pipeline_config, bufConfig, lenConfig);
-    free(pipeline_definition.modules);
-}
-
-void module_configurations()
-{
-    // Module parameter config example (should be defined as a generic CSH method)
-    ModuleConfig flip_config = MODULE_CONFIG__INIT;
-    ConfigParameter flip_percent = CONFIG_PARAMETER__INIT;
-    ConfigParameter flip_amount = CONFIG_PARAMETER__INIT;
-    flip_percent.key = "flip_percent";
-    flip_percent.value_case = CONFIG_PARAMETER__VALUE_FLOAT_VALUE;
-    flip_percent.float_value = 0.20;
-    flip_amount.key = "flip_amount";
-    flip_amount.value_case = CONFIG_PARAMETER__VALUE_INT_VALUE;
-    flip_amount.int_value = 1;
-    flip_config.parameters = malloc(sizeof(ConfigParameter *) * 2);
-    flip_config.n_parameters = 2;
-    flip_config.parameters[0] = &flip_percent;
-    flip_config.parameters[1] = &flip_amount;
-    size_t lenConfig = module_config__get_packed_size(&flip_config);
-    uint8_t bufConfig[lenConfig];
-    module_config__pack(&flip_config, bufConfig);
-    param_set_data(&module_param_1, bufConfig, lenConfig);
-    free(flip_config.parameters);
-}
-
 void save_image(const char *filename, const ImageBatch *batch)
 {
     // Determine the desired output format (e.g., PNG)
@@ -323,9 +275,6 @@ void cleanup(Pipeline *pipeline) {
 
 void run_pipeline(void)
 {
-    //pipeline_configurations();
-    module_configurations();
-
     int functionLimit = 10;
     void *functionPointers[functionLimit];
     char *modules[functionLimit]; // Array to store the module names
