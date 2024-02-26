@@ -99,18 +99,6 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outp
     }
 }
 
-int get_buf_size(uint8_t *buf, size_t buf_size)
-{
-    size_t actual_size = 0;
-
-    while (actual_size < buf_size && buf[actual_size] != 0)
-    {
-        actual_size++;
-    }
-
-    return actual_size;
-}
-
 void trim_buffer(uint8_t *buf, uint8_t *old_buf, size_t buf_size)
 {
     // Copy the data from the original buffer to the new buffer
@@ -133,11 +121,11 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data, int param_ids[])
         int initial_buf_size = DATA_PARAM_SIZE;
         uint8_t buf[initial_buf_size];
         param_get_data(params[param_ids[i] - 1], buf, initial_buf_size);
-        int buf_size = get_buf_size(buf, initial_buf_size);
+        int buf_size = (int)buf[0];
 
         // allocate trimmed buffer and copy data
         uint8_t trimmed_buf[buf_size];
-        trim_buffer(trimmed_buf, buf, buf_size);
+        trim_buffer(trimmed_buf, &buf[1], buf_size);
 
         // find specific value from key in protodata
         ModuleConfig *unpacked_config = module_config__unpack(NULL, buf_size, trimmed_buf);
@@ -174,11 +162,11 @@ int unpack_configurations(char *modules[], int param_ids[])
     int initial_buf_size = DATA_PARAM_SIZE;
     uint8_t buf[initial_buf_size];
     param_get_data(&pipeline_config, buf, initial_buf_size);
-    int buf_size = get_buf_size(buf, initial_buf_size);
+    int buf_size = (int)buf[0];
 
     // allocate trimmed buffer and copy data
     uint8_t trimmed_buf[buf_size];
-    trim_buffer(trimmed_buf, buf, buf_size);
+    trim_buffer(trimmed_buf, &buf[1], buf_size);
 
     // get pipeline definition
     PipelineDefinition *unpacked_config = pipeline_definition__unpack(NULL, buf_size, trimmed_buf);
