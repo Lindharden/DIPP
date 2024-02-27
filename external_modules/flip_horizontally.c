@@ -75,15 +75,15 @@ ImageBatch run(const ImageBatch *input_batch, ModuleConfig *config) {
                     // Swap pixel values horizontally
                     for (int c = 0; c < input_batch->channels; ++c) {
                         if (y > flip_height) {
-                            new_data[(y * input_batch->width + x) * input_batch->channels + c] = 
+                            new_data[((y * input_batch->width + x) * input_batch->channels + c) + i * image_size] = 
                                 image_data[(y * input_batch->width + x) * input_batch->channels + c];
-                            new_data[(y * input_batch->width + (input_batch->width - 1 - x)) * input_batch->channels + c] =
+                            new_data[((y * input_batch->width + (input_batch->width - 1 - x)) * input_batch->channels + c) + i * image_size] =
                                 image_data[(y * input_batch->width + (input_batch->width - 1 - x)) * input_batch->channels + c];
                         } else {
                             unsigned char temp = image_data[(y * input_batch->width + x) * input_batch->channels + c];
-                            new_data[(y * input_batch->width + x) * input_batch->channels + c] =
+                            new_data[((y * input_batch->width + x) * input_batch->channels + c) + i * image_size] =
                                 image_data[(y * input_batch->width + (input_batch->width - 1 - x)) * input_batch->channels + c];
-                            new_data[(y * input_batch->width + (input_batch->width - 1 - x)) * input_batch->channels + c] = temp;
+                            new_data[((y * input_batch->width + (input_batch->width - 1 - x)) * input_batch->channels + c) + i * image_size] = temp;
                         }
                     }
                 }
