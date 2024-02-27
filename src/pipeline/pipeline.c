@@ -241,19 +241,27 @@ void check_run(void)
     }
 }
 
-void save_image(const char *filename, const ImageBatch *batch)
+void save_images(const char *filename_base, const ImageBatch *batch)
 {
-    // Determine the desired output format (e.g., PNG)
-    int stride = batch->width * batch->channels;
-    int success = stbi_write_png(filename, batch->width, batch->height, batch->channels, batch->data, stride);
-    if (!success)
+    int image_size = batch->width * batch->height * batch->channels;
+    for (size_t i = 0; i < batch->num_images; i++)
     {
-        fprintf(stderr, "Error writing image to %s\n", filename);
+        char filename[20];
+        sprintf(filename, "%s%d.png", filename_base, i);
+
+        // Determine the desired output format (e.g., PNG)
+        int stride = batch->width * batch->channels;
+        int success = stbi_write_png(filename, batch->width, batch->height, batch->channels, &batch->data[i * image_size], stride);
+        if (!success)
+        {
+            fprintf(stderr, "Error writing image to %s\n", filename);
+        }
+        else
+        {
+            printf("Image saved as %s\n", filename);
+        }
     }
-    else
-    {
-        printf("Image saved as %s\n", filename);
-    }
+    
 }
 
 void cleanup(Pipeline *pipeline) {
@@ -325,7 +333,7 @@ void run_pipeline(void)
         return;
     }
 
-    save_image("output.png", &datarcv);
+    save_images("output", &datarcv);
 
     // Detach and free shared memory
     shmdt(shmaddr);
