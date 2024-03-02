@@ -23,6 +23,8 @@ sources = files([
 	'protos/pipeline_config.pb-c.c',
 ])
 
+include_directories('protos')
+
 csp_dep = dependency('csp', fallback: ['csp', 'csp_dep'])
 param_dep = dependency('param', fallback: ['param', 'param_dep'])
 proto_c_dep = dependency('libprotobuf-c', fallback: ['protobuf-c', 'proto_c_dep'])
