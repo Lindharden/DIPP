@@ -16,8 +16,8 @@
 #include "pipeline.h"
 #include "../param_config.h"
 #include "../vmem_config.h"
-#include "../protos/module_config.pb-c.h"
-#include "../protos/pipeline_config.pb-c.h"
+#include "module_config.pb-c.h"
+#include "pipeline_config.pb-c.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION

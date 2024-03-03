@@ -4,4 +4,4 @@ meson setup . builddir
 cd builddir
 ninja 
 cd ..
-./builddir/pipeline_serv
+./builddir/ipp

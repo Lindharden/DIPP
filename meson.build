@@ -19,11 +19,9 @@ sources = files([
     'src/csp_hooks.c',
     'src/pipeline/pipeline.c',
     'src/vmem_config.c',
-	'protos/module_config.pb-c.c',
-	'protos/pipeline_config.pb-c.c',
+	'src/pipeline/module_config.pb-c.c',
+	'src/pipeline/pipeline_config.pb-c.c',
 ])
-
-include_directories('protos')
 
 csp_dep = dependency('csp', fallback: ['csp', 'csp_dep'])
 param_dep = dependency('param', fallback: ['param', 'param_dep'])
@@ -33,7 +31,7 @@ deps = [csp_dep,param_dep,proto_c_dep,m_dep]
 
 c_args = '-DHOSTNAME="@0@"'.format(get_option('hostname'))
 
-pipeline_serv = executable('pipeline_serv', sources,
+ipp = executable('ipp', sources,
 	dependencies : deps,
 	install : true,
     c_args : c_args,
