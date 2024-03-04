@@ -1,3 +1,16 @@
+# Image files
+*.png
+
+# IDE specific files
+/.vscode/
+
+# vmem files for persistent parameters
+*.vmem
+
+# Compiled files
+/sim/camera
+/src/pipeline/pipeline
+
 # Object files
 *.o
 *.ko
