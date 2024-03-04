@@ -33,10 +33,16 @@ static void * onehz_task(void * param) {
 	return NULL;
 }
 
-static void iface_init(void){
+static void iface_init(int argc, char *argv[]){
     csp_iface_t * iface = NULL;
+	char *port = "localhost"; // Default port is "localhost"
+
+    // Check if a port argument is provided in the command line
+    if (argc > 1) {
+        port = argv[1]; // Use the provided port instead of "localhost"
+    }
     
-	csp_zmqhub_init_filter2("ZMQ", "localhost", 3, 8, true, &iface, NULL, CSP_ZMQPROXY_SUBSCRIBE_PORT, CSP_ZMQPROXY_PUBLISH_PORT);
+	csp_zmqhub_init_filter2("ZMQ", port, 3, 8, true, &iface, NULL, CSP_ZMQPROXY_SUBSCRIBE_PORT, CSP_ZMQPROXY_PUBLISH_PORT);
 
     iface->addr = 162;
     iface->netmask = 8;
@@ -45,7 +51,7 @@ static void iface_init(void){
 	csp_iflist_add(iface);
 }
 
-int main(void){
+int main(int argc, char *argv[]){
 	printf("\nbootmsg\n");
 
 	srand(time(NULL));
@@ -62,7 +68,7 @@ int main(void){
 	csp_init();
 
 	/* Interfaces */
-    iface_init();
+    iface_init(argc, argv);
     csp_print("Connection table\r\n");
     csp_conn_print_table();
 
