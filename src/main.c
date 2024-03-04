@@ -64,7 +64,7 @@ int main(int argc, char *argv[]){
     */
 
 	/* Init CSP with */
-	csp_conf.hostname = HOSTNAME;
+	csp_conf.hostname = HOSTNAME; // HOSTNAME defined in meson_options.txt
 	csp_init();
 
 	/* Interfaces */
