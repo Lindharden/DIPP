@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <csp/csp.h>
+#include <csp/csp_iflist.h>
+#include <csp/csp_rtable.h>
+#include <csp/interfaces/csp_if_zmqhub.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <param/param_server.h>
@@ -9,16 +12,6 @@
 #include <vmem/vmem_file.h>
 #include "vmem_config.h"
 #include <csp/drivers/usart.h>
-
-csp_conf_t csp_conf = {
-	.version = 2,
-	.hostname = "IPU",
-	.model = "",
-	.revision = "",
-	.conn_dfl_so = CSP_O_NONE,
-	.dedup = CSP_DEDUP_OFF
-};
-
 
 void * vmem_server_task(void * param) {
 	vmem_server_loop(param);
@@ -43,13 +36,13 @@ static void * onehz_task(void * param) {
 static void iface_init(void){
     csp_iface_t * iface = NULL;
     
-	csp_zmqhub_init_filter2("ZMQ", "localhost", 3, 8, true, &iface);
+	csp_zmqhub_init_filter2("ZMQ", "localhost", 3, 8, true, &iface, NULL, CSP_ZMQPROXY_SUBSCRIBE_PORT, CSP_ZMQPROXY_PUBLISH_PORT);
 
     iface->addr = 162;
     iface->netmask = 8;
     iface->name = "zmq";
     csp_rtable_set(0, 0, iface, CSP_NO_VIA_ADDRESS);
-	csp_iflist_set_default(iface);
+	csp_iflist_add(iface);
 }
 
 int main(void){

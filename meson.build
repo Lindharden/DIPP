@@ -1,4 +1,7 @@
 project('pipeline', 'c',subproject_dir: 'lib',default_options: [
+	'c_std=gnu11', 
+	'b_lto=false',
+	'default_library=static',
 	'csp:packet_padding_bytes=42', 
 	'csp:buffer_count=1000',
 	'csp:buffer_size=2048',
@@ -7,18 +10,18 @@ project('pipeline', 'c',subproject_dir: 'lib',default_options: [
 	'csp:qfifo_len=1000',
 	'csp:rdp_max_window=1000',
 	'csp:port_max_bind=16',
+	'csp:use_rtable=true',
 	'param:have_fopen=true', 
-	'param:vmem_fram=false', 
 	'param:list_dynamic=true',
+	'param:vmem_fram=false', 
 ])
 
 sources = files([
 	'src/main.c',
 	'src/hooks.c',
-    'src/serial.c',
-    'src/csp_hooks.c',
-    'src/pipeline/pipeline.c',
-    'src/vmem_config.c',
+	'src/serial.c',
+	'src/pipeline/pipeline.c',
+	'src/vmem_config.c',
 	'src/pipeline/module_config.pb-c.c',
 	'src/pipeline/pipeline_config.pb-c.c',
 ])
@@ -34,6 +37,6 @@ c_args = '-DHOSTNAME="@0@"'.format(get_option('hostname'))
 ipp = executable('ipp', sources,
 	dependencies : deps,
 	install : true,
-    c_args : c_args,
+	c_args : c_args,
 	link_args : ['-ldl'],
 )
