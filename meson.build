@@ -18,7 +18,6 @@ project('pipeline', 'c',subproject_dir: 'lib',default_options: [
 
 sources = files([
 	'src/main.c',
-	'src/hooks.c',
 	'src/serial.c',
 	'src/pipeline/pipeline.c',
 	'src/vmem_config.c',
