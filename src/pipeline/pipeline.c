@@ -14,28 +14,12 @@
 #include <sys/shm.h>
 #include "types.h"
 #include "pipeline.h"
-#include "../param_config.h"
-#include "../vmem_config.h"
 #include "module_config.pb-c.h"
 #include "pipeline_config.pb-c.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
-
-#define DATA_PARAM_SIZE 188
-
-// Error codes
-#define SUCCESS 0
-#define FAILURE -1
-
-/* Define module specific parameters */
-PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_1, module_param_1, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_1, NULL);
-PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_2, module_param_2, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_2, NULL);
-PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_3, module_param_3, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_3, NULL);
-PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_4, module_param_4, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_4, NULL);
-PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_5, module_param_5, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_5, NULL);
-PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_6, module_param_6, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_MODULE_6, NULL);
 
 void callback_run(param_t *param, int index)
 {
@@ -45,13 +29,6 @@ void callback_run(param_t *param, int index)
         param_set_uint8(param, 0);
     }
 }
-PARAM_DEFINE_STATIC_VMEM(PARAMID_PIPELINE_CONFIG, pipeline_config, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, NULL, NULL, config, VMEM_CONF_PIPELINE, NULL);
-
-static param_t *params[] = {&module_param_1, &module_param_2, &module_param_3, &module_param_4, &module_param_5, &module_param_6};
-
-/* Define a pipeline_run parameter */
-static uint8_t _pipeline_run = 0;
-PARAM_DEFINE_STATIC_RAM(PARAMID_PIPELINE_RUN, pipeline_run, PARAM_TYPE_UINT8, -1, 0, PM_CONF, callback_run, NULL, &_pipeline_run, "Set the pipeline to execute the file");
 
 void initialize_pipeline(Pipeline *pipeline, ProcessFunction *funcs, size_t size)
 {
@@ -228,17 +205,6 @@ int load_modules_with_params(void *functionPointers[], char *modules[], int para
     }
 
     return numModules;
-}
-
-void check_run(void)
-{
-    // run the pipeline if the _pipeline_run parameter is set w
-    uint8_t do_run = param_get_uint8(&pipeline_run);
-    if (do_run > 0)
-    {
-        run_pipeline();
-        param_set_uint8(&pipeline_run, 0);
-    }
 }
 
 void save_images(const char *filename_base, const ImageBatch *batch)
