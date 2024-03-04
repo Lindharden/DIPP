@@ -4,15 +4,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <param/param.h>
-#include <csp/csp.h>
 #include <unistd.h>
-#include <signal.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/shm.h>
-#include "types.h"
 #include "pipeline.h"
 #include "module_config.pb-c.h"
 #include "pipeline_config.pb-c.h"
@@ -21,6 +18,80 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+size_t get_param_buffer(uint8_t *out, param_t *param)
+{
+    // initialize buffer for module parameters
+    int initial_buf_size = DATA_PARAM_SIZE;
+    uint8_t buf[initial_buf_size];
+    param_get_data(param, buf, initial_buf_size);
+    int buf_size = (int)buf[0];
+
+    out = malloc(buf_size * sizeof(uint8_t));
+
+    // Copy the data from the original buffer to the new buffer
+    for (size_t i = 0; i < buf_size; i++)
+    {
+        out[i] = buf[i + 1];
+    }
+
+    return buf_size;
+}
+
+// Function to load a module and parameter from a configuration file
+void *load_module(char *moduleName)
+{
+    char filename[256]; // Adjust the buffer size as needed
+    snprintf(filename, sizeof(filename), "./external_modules/%s.so", moduleName);
+
+    // Load the external library dynamically
+    void *handle = dlopen(filename, RTLD_LAZY);
+    if (handle == NULL)
+    {
+        fprintf(stderr, "Error: Unable to load the library %s.\n", filename);
+        return NULL;
+    }
+
+    // Get a function pointer to the external function
+    void *functionPointer = dlsym(handle, "run");
+    if (functionPointer == NULL)
+    {
+        fprintf(stderr, "Error: Unable to find the run function in %s.\n", filename);
+        dlclose(handle);
+        return NULL;
+    }
+
+    return functionPointer;
+}
+
+void setup()
+{
+    uint8_t *buffer;
+    size_t buf_size;
+    for (size_t pipeline_idx = 0; pipeline_idx < MAX_PIPELINES; pipeline_idx++)
+    {
+        // Parse pipeline configuration
+        buf_size = get_param_buffer(buffer, pipeline_configs[pipeline_idx]);
+        PipelineDefinition *pdef = pipeline_definition__unpack(NULL, buf_size, buffer);
+        Pipeline pipeline;
+        pipeline.pipeline_name = pdef->name;
+        pipeline.num_modules = pdef->n_modules;
+        pipelines[pipeline_idx] = pipeline;
+        free(buffer);
+
+        for (size_t pipeline_module_idx = 0; pipeline_module_idx < pdef->n_modules; pipeline_module_idx++)
+        {
+            // Parse module configuration for pipeline
+            Module module;
+            module.module_name = pdef->modules[pipeline_module_idx]->name;
+            module.module_function = load_module(pdef->modules[pipeline_module_idx]->name);
+            buf_size = get_param_buffer(buffer, module_configs[pdef->modules[pipeline_module_idx]->param_id]);
+            module.module_param = module_config__unpack(NULL, buf_size, buffer);
+            pipeline.modules[pdef->modules[pipeline_module_idx]->order] = module;
+            free(buffer);
+        }
+    }
+}
+
 void callback_run(param_t *param, int index)
 {
     if (param_get_uint8(param) > 0)
@@ -28,13 +99,6 @@ void callback_run(param_t *param, int index)
         run_pipeline();
         param_set_uint8(param, 0);
     }
-}
-
-void initialize_pipeline(Pipeline *pipeline, ProcessFunction *funcs, size_t size)
-{
-    pipeline->functions = malloc(size * sizeof(ProcessFunction));
-    memcpy(pipeline->functions, funcs, size * sizeof(ProcessFunction));
-    pipeline->size = size;
 }
 
 int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outputPipe, ModuleConfig *config)
@@ -76,38 +140,17 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outp
     }
 }
 
-void trim_buffer(uint8_t *buf, uint8_t *old_buf, size_t buf_size)
-{
-    // Copy the data from the original buffer to the new buffer
-    for (size_t i = 0; i < buf_size; i++)
-    {
-        buf[i] = old_buf[i];
-    }
-}
-
-int execute_pipeline(Pipeline *pipeline, ImageBatch *data, int param_ids[])
+int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
 {
     int outputPipe[2]; // Pipe for inter-process communication
     pipe(outputPipe);
 
-    for (size_t i = 0; i < pipeline->size; ++i)
+    for (size_t i = 0; i < pipeline->num_modules; ++i)
     {
-        ProcessFunction func = pipeline->functions[i];
+        ProcessFunction module_function = pipeline->modules[i].module_function;
+        ModuleConfig *module_config = pipeline->modules[i].module_param;
 
-        // initialize buffer for module parameters
-        int initial_buf_size = DATA_PARAM_SIZE;
-        uint8_t buf[initial_buf_size];
-        param_get_data(params[param_ids[i] - 1], buf, initial_buf_size);
-        int buf_size = (int)buf[0];
-
-        // allocate trimmed buffer and copy data
-        uint8_t trimmed_buf[buf_size];
-        trim_buffer(trimmed_buf, &buf[1], buf_size);
-
-        // find specific value from key in protodata
-        ModuleConfig *unpacked_config = module_config__unpack(NULL, buf_size, trimmed_buf);
-
-        int module_status = execute_module_in_process(func, data, outputPipe, unpacked_config);
+        int module_status = execute_module_in_process(module_function, data, outputPipe, module_config);
 
         if (module_status == FAILURE)
         {
@@ -132,81 +175,6 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data, int param_ids[])
     return SUCCESS;
 }
 
-// Function to parse a configuration file with module and parameter names
-int unpack_configurations(char *modules[], int param_ids[])
-{
-    // initialize buffer for module parameters
-    int initial_buf_size = DATA_PARAM_SIZE;
-    uint8_t buf[initial_buf_size];
-    param_get_data(&pipeline_config, buf, initial_buf_size);
-    int buf_size = (int)buf[0];
-
-    // allocate trimmed buffer and copy data
-    uint8_t trimmed_buf[buf_size];
-    trim_buffer(trimmed_buf, &buf[1], buf_size);
-
-    // get pipeline definition
-    PipelineDefinition *unpacked_config = pipeline_definition__unpack(NULL, buf_size, trimmed_buf);
-
-    // save module name and param id for each module definition
-    for (size_t i = 0; i < unpacked_config->n_modules; i++)
-    {
-        ModuleDefinition *unpacked_definition = unpacked_config->modules[i];
-        // the 'order' fields should be incremental
-        modules[unpacked_definition->order - 1] = unpacked_definition->name;
-        param_ids[unpacked_definition->order - 1] = unpacked_definition->param_id;
-    }
-
-    return unpacked_config->n_modules;
-}
-
-// Function to load a module and parameter from a configuration file
-void *load_module(char *moduleName)
-{
-    char filename[256]; // Adjust the buffer size as needed
-    snprintf(filename, sizeof(filename), "./external_modules/%s.so", moduleName);
-
-    // Load the external library dynamically
-    void *handle = dlopen(filename, RTLD_LAZY);
-    if (handle == NULL)
-    {
-        fprintf(stderr, "Error: Unable to load the library %s.\n", filename);
-        return NULL;
-    }
-
-    // Get a function pointer to the external function
-    void *functionPointer = dlsym(handle, "run");
-    if (functionPointer == NULL)
-    {
-        fprintf(stderr, "Error: Unable to find the run function in %s.\n", filename);
-        dlclose(handle);
-        return NULL;
-    }
-
-    return functionPointer;
-}
-
-// Function to load modules from a configuration file
-int load_modules_with_params(void *functionPointers[], char *modules[], int param_ids[])
-{
-    int numModules = unpack_configurations(modules, param_ids);
-
-    for (int i = 0; i < numModules; ++i)
-    {
-        // Load the module with the associated parameter
-        functionPointers[i] = load_module(modules[i]);
-
-        if (functionPointers[i] == NULL)
-        {
-            // Handle loading failure
-
-            fprintf(stderr, "Error: Unable to load module %s.\n", modules[i]);
-        }
-    }
-
-    return numModules;
-}
-
 void save_images(const char *filename_base, const ImageBatch *batch)
 {
     int image_size = batch->width * batch->height * batch->channels;
@@ -227,27 +195,29 @@ void save_images(const char *filename_base, const ImageBatch *batch)
             printf("Image saved as %s\n", filename);
         }
     }
-    
 }
 
-void cleanup(Pipeline *pipeline) {
-    // Clean up functions
-    free(pipeline->functions);
+int get_pipeline_by_name(char *pipeline_name, Pipeline *pipeline)
+{
+    for (size_t i = 0; i < MAX_PIPELINES; i++)
+    {
+        if (strcmp(pipelines[i].pipeline_name, pipeline_name) == 0)
+        {
+            pipeline = &pipelines[i];
+            return SUCCESS;
+        }
+    }
+    return FAILURE;
+}
+
+void cleanup()
+{
+    // TODO: cleanup
 }
 
 void run_pipeline(void)
 {
-    int functionLimit = 10;
-    void *functionPointers[functionLimit];
-    char *modules[functionLimit]; // Array to store the module names
-    int param_ids[functionLimit]; // Array to store the parameters for the modules
-
-    // Load modules from the configuration file
-    int numModules = load_modules_with_params(functionPointers, modules, param_ids);
-
-    // Initialize the pipeline
-    Pipeline pipeline;
-    initialize_pipeline(&pipeline, functionPointers, numModules);
+    // TODO: Check if pipelines and modules are cached, otherwise run setup()
 
     // Create msg queue
     int msg_queue_id;
@@ -267,7 +237,6 @@ void run_pipeline(void)
     if (buf.msg_qnum <= 0)
     {
         perror("No items in the msg queue");
-        cleanup(&pipeline);
         return;
     }
 
@@ -290,12 +259,18 @@ void run_pipeline(void)
     datarcv.data = shmaddr; // retrieve correct address in shared memory
 
     // Execute the pipeline with parameter values
-    int status = execute_pipeline(&pipeline, &datarcv, param_ids);
+    Pipeline *pipeline;
+    if (get_pipeline_by_name(datarcv.pipeline_name, pipeline) == FAILURE)
+    {
+        fprintf(stderr, "Pipeline with name '%s' does not exist.\n", datarcv.pipeline_name);
+    }
+
+    int status = execute_pipeline(&pipeline, &datarcv);
 
     if (status != SUCCESS)
     {
         // Print failure message
-        printf("Module named '%s' caused a failure in the pipeline\n", modules[status - 1]);
+        printf("Module named '%s' caused a failure in the pipeline\n", pipeline->modules[status - 1]);
         return;
     }
 
@@ -304,6 +279,4 @@ void run_pipeline(void)
     // Detach and free shared memory
     shmdt(shmaddr);
     shmctl(shmid, IPC_RMID, NULL);
-
-    cleanup(&pipeline);
 }
