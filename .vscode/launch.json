@@ -8,7 +8,7 @@
             "name": "GOGOGO",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/builddir/pipeline_serv",
+            "program": "${workspaceFolder}/builddir/ipp",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
