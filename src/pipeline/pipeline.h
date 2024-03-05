@@ -7,7 +7,7 @@
 #define DATA_PARAM_SIZE 188
 
 #define MAX_MODULES 20
-#define MAX_PIPELINES 5
+#define MAX_PIPELINES 6
 
 // Error codes
 #define SUCCESS 0
@@ -20,7 +20,7 @@ typedef struct ImageBatch {
     int channels;
     int num_images;
     int shm_key;
-    char *pipeline_name; // which pipeline to utilize
+    int pipeline_id;
     unsigned char *data; // batched image data (255 different values)
 } ImageBatch;
 
@@ -33,12 +33,12 @@ typedef struct Module {
 } Module;
 
 typedef struct Pipeline {
-    char *pipeline_name;
+    int pipeline_id;
     Module modules[MAX_MODULES];
     int num_modules;
 } Pipeline;
 
-/* Define variables for caching modules and pipelines */
+/* Stashed pipelines */
 static Pipeline pipelines[MAX_PIPELINES];
 
 void setup();

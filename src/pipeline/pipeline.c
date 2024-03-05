@@ -18,7 +18,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-size_t get_param_buffer(uint8_t *out, param_t *param)
+size_t get_param_buffer(uint8_t **out, param_t *param)
 {
     // initialize buffer for module parameters
     int initial_buf_size = DATA_PARAM_SIZE;
@@ -26,12 +26,15 @@ size_t get_param_buffer(uint8_t *out, param_t *param)
     param_get_data(param, buf, initial_buf_size);
     int buf_size = (int)buf[0];
 
-    out = malloc(buf_size * sizeof(uint8_t));
+    *out = malloc(buf_size * sizeof(uint8_t));
+    if (!*out) {
+        return 0;
+    }
 
     // Copy the data from the original buffer to the new buffer
     for (size_t i = 0; i < buf_size; i++)
     {
-        out[i] = buf[i + 1];
+        (*out)[i] = buf[i + 1];
     }
 
     return buf_size;
@@ -63,32 +66,38 @@ void *load_module(char *moduleName)
     return functionPointer;
 }
 
-void setup()
-{
-    uint8_t *buffer;
-    size_t buf_size;
-    for (size_t pipeline_idx = 0; pipeline_idx < MAX_PIPELINES; pipeline_idx++)
-    {
-        // Parse pipeline configuration
-        buf_size = get_param_buffer(buffer, pipeline_configs[pipeline_idx]);
-        PipelineDefinition *pdef = pipeline_definition__unpack(NULL, buf_size, buffer);
-        Pipeline pipeline;
-        pipeline.pipeline_name = pdef->name;
-        pipeline.num_modules = pdef->n_modules;
-        pipelines[pipeline_idx] = pipeline;
-        free(buffer);
+void setup() {
+    uint8_t *buffer = NULL; // Initialize buffer pointer to NULL
+    size_t buf_size = 0;
 
-        for (size_t pipeline_module_idx = 0; pipeline_module_idx < pdef->n_modules; pipeline_module_idx++)
-        {
-            // Parse module configuration for pipeline
-            Module module;
-            module.module_name = pdef->modules[pipeline_module_idx]->name;
-            module.module_function = load_module(pdef->modules[pipeline_module_idx]->name);
-            buf_size = get_param_buffer(buffer, module_configs[pdef->modules[pipeline_module_idx]->param_id]);
-            module.module_param = module_config__unpack(NULL, buf_size, buffer);
-            pipeline.modules[pdef->modules[pipeline_module_idx]->order] = module;
+    for (size_t pipeline_idx = 0; pipeline_idx < MAX_PIPELINES; pipeline_idx++) {
+        buf_size = get_param_buffer(&buffer, pipeline_configs[pipeline_idx]);
+
+        PipelineDefinition *pdef = pipeline_definition__unpack(NULL, buf_size, buffer);
+        if (!pdef) {
             free(buffer);
+            continue; // Skip this pipeline if unpacking fails
         }
+
+        pipelines[pipeline_idx].pipeline_id = pdef->id;
+        pipelines[pipeline_idx].num_modules = pdef->n_modules;
+
+        for (size_t module_idx = 0; module_idx < pdef->n_modules; module_idx++) {
+            // Reset buffer for the next use
+            free(buffer);
+            buffer = NULL;
+
+            ModuleDefinition *mdef = pdef->modules[module_idx];
+
+            // Cache the parsed pipeline values
+            pipelines[pipeline_idx].modules[module_idx].module_name = strdup(mdef->name);
+            pipelines[pipeline_idx].modules[module_idx].module_function = load_module(mdef->name);
+            size_t moduleBufSize = get_param_buffer(&buffer, module_configs[mdef->param_id - 1]);
+            pipelines[pipeline_idx].modules[module_idx].module_param = module_config__unpack(NULL, moduleBufSize, buffer);
+        }
+        
+        free(buffer);
+        buffer = NULL;
     }
 }
 
@@ -166,6 +175,7 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
         data->height = result.height;
         data->shm_key = result.shm_key;
         data->num_images = result.num_images;
+        data->pipeline_id = result.pipeline_id;
         data->data = result.data;
     }
 
@@ -197,13 +207,13 @@ void save_images(const char *filename_base, const ImageBatch *batch)
     }
 }
 
-int get_pipeline_by_name(char *pipeline_name, Pipeline *pipeline)
+int get_pipeline_by_id(int pipeline_id, Pipeline **pipeline)
 {
     for (size_t i = 0; i < MAX_PIPELINES; i++)
     {
-        if (strcmp(pipelines[i].pipeline_name, pipeline_name) == 0)
+        if (pipelines[i].pipeline_id == pipeline_id)
         {
-            pipeline = &pipelines[i];
+            *pipeline = &pipelines[i];
             return SUCCESS;
         }
     }
@@ -217,11 +227,12 @@ void cleanup()
 
 void run_pipeline(void)
 {
+    setup();
     // TODO: Check if pipelines and modules are cached, otherwise run setup()
 
     // Create msg queue
     int msg_queue_id;
-    int MSG_QUEUE_KEY = 70;
+    int MSG_QUEUE_KEY = 71;
     if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0)) == -1)
     {
         perror("Could not get MSG queue");
@@ -260,12 +271,12 @@ void run_pipeline(void)
 
     // Execute the pipeline with parameter values
     Pipeline *pipeline;
-    if (get_pipeline_by_name(datarcv.pipeline_name, pipeline) == FAILURE)
+    if (get_pipeline_by_id(datarcv.pipeline_id, &pipeline) == FAILURE)
     {
-        fprintf(stderr, "Pipeline with name '%s' does not exist.\n", datarcv.pipeline_name);
+        fprintf(stderr, "Pipeline with id '%s' does not exist.\n", datarcv.pipeline_id);
     }
 
-    int status = execute_pipeline(&pipeline, &datarcv);
+    int status = execute_pipeline(pipeline, &datarcv);
 
     if (status != SUCCESS)
     {
