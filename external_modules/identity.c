@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "../src/pipeline/types.h"
+#include "types.h"
 
 ImageBatch run(ImageBatch *batch, int param) {
     ImageBatch new_batch;

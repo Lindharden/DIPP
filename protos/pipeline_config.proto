@@ -9,5 +9,6 @@ message ModuleDefinition {
 
 // Define a message type for pipeline configuration
 message PipelineDefinition {
-    repeated ModuleDefinition modules = 1;
+    int32 id = 1;
+    repeated ModuleDefinition modules = 2;
 }

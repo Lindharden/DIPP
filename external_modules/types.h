@@ -1,5 +1,4 @@
-#include <stdlib.h>
-#include <stdint.h>
+#include "../src/pipeline/module_config.pb-c.h"
 
 typedef struct ImageBatch {
     long mtype;
@@ -8,6 +7,6 @@ typedef struct ImageBatch {
     int channels;
     int num_images;
     int shm_key;
-    int pipeline_id; // which pipeline to utilize
+    int pipeline_id;
     unsigned char *data; // batched image data (255 different values)
 } ImageBatch;

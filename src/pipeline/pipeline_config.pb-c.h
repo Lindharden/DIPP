@@ -45,12 +45,13 @@ struct  ModuleDefinition
 struct  PipelineDefinition
 {
   ProtobufCMessage base;
+  int32_t id;
   size_t n_modules;
   ModuleDefinition **modules;
 };
 #define PIPELINE_DEFINITION__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&pipeline_definition__descriptor) \
-    , 0,NULL }
+    , 0, 0,NULL }
 
 
 /* ModuleDefinition methods */
