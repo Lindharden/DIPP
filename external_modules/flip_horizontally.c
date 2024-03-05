@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "../src/pipeline/types.h"
-#include "../protos/module_config.pb-c.h"
+#include "types.h"
 
 // GENERIC PROTOBUF UTIL FUNCTIONS //
 
@@ -53,6 +52,7 @@ ImageBatch run(const ImageBatch *input_batch, ModuleConfig *config) {
     mirrored_batch.channels = input_batch->channels;
     mirrored_batch.shm_key = input_batch->shm_key;
     mirrored_batch.num_images = input_batch->num_images;
+    mirrored_batch.pipeline_id = input_batch->pipeline_id;
     mirrored_batch.data = input_batch->data;
 
     float flip_percent = get_param_float(config, "flip_percent");

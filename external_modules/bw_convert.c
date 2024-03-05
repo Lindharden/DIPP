@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "../src/pipeline/types.h"
+#include "types.h"
 
 ImageBatch run(const ImageBatch *batch, ModuleConfig *config) {
     // Create a new ImageBatch object to store the black and white image
@@ -11,6 +11,7 @@ ImageBatch run(const ImageBatch *batch, ModuleConfig *config) {
     bwBatch.channels = 1; // Black and white image will have only one channel
     bwBatch.shm_key = batch->shm_key;
     bwBatch.num_images = batch->num_images;
+    bwBatch.pipeline_id = batch->pipeline_id;
     bwBatch.data = batch->data;
 
     int batch_size = batch->width * batch->height * batch->channels * batch->num_images;
