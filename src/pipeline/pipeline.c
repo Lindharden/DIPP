@@ -44,7 +44,7 @@ size_t get_param_buffer(uint8_t **out, param_t *param)
 void *load_module(char *moduleName)
 {
     char filename[256]; // Adjust the buffer size as needed
-    snprintf(filename, sizeof(filename), "./external_modules/%s.so", moduleName);
+    snprintf(filename, sizeof(filename), "/usr/share/pipeline/%s.so", moduleName);
 
     // Load the external library dynamically
     void *handle = dlopen(filename, RTLD_LAZY);
@@ -191,7 +191,7 @@ void save_images(const char *filename_base, const ImageBatch *batch)
     for (size_t i = 0; i < batch->num_images; i++)
     {
         char filename[20];
-        sprintf(filename, "%s%d.png", filename_base, i);
+        sprintf(filename, "/usr/share/pipeline/%s%d.png", filename_base, i);
 
         // Determine the desired output format (e.g., PNG)
         int stride = batch->width * batch->channels;
@@ -225,14 +225,54 @@ void cleanup()
     // TODO: cleanup
 }
 
+void camera_sim()
+{
+    // Prepare the data
+    int i = 300;
+    ImageBatch data;
+    data.mtype = 1;
+    const char *filename = "/usr/share/pipeline/test.png"; 
+    int image_width, image_height, image_channels;
+    unsigned char *image_data = stbi_load(filename, &image_width, &image_height, &image_channels, STBI_rgb_alpha);
+    data.height = image_height;
+    data.width = image_width;
+    data.channels = image_channels;
+    data.num_images = 2;
+    data.shm_key = i++; // testing key
+    data.pipeline_id = 1;
+    size_t image_size = image_height * image_width * image_channels;
+    size_t data_size = image_size * data.num_images;
+    int shmid = shmget(data.shm_key, data_size, IPC_CREAT | 0666);
+    char *shmaddr = shmat(shmid, NULL, 0);
+    memcpy(shmaddr, image_data, image_size); // Copy image batch data to shared memory
+    memcpy(shmaddr + image_size, image_data, image_size); // Copy image batch data to shared memory
+
+    // create msg queue
+    int msg_queue_id;
+    if ((msg_queue_id = msgget(75, 0666 | IPC_CREAT)) == -1)
+    {
+        perror("msgget error");
+    }
+
+    // send msg to queue
+    if (msgsnd(msg_queue_id, &data, sizeof(data) - sizeof(long), 0) == -1)
+    {
+        perror("msgsnd error");
+    }
+
+    printf("Image sent!\n");
+}
+
 void run_pipeline(void)
 {
     setup();
     // TODO: Check if pipelines and modules are cached, otherwise run setup()
 
+    camera_sim();
+
     // Create msg queue
     int msg_queue_id;
-    int MSG_QUEUE_KEY = 71;
+    int MSG_QUEUE_KEY = 75;
     if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0)) == -1)
     {
         perror("Could not get MSG queue");
