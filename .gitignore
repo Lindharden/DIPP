@@ -1,6 +1,8 @@
 # Image files
 *.png
 
+!test.png
+
 # IDE specific files
 /.vscode/
 
@@ -32,6 +34,9 @@
 *.so
 *.so.*
 *.dylib
+
+!flip_horizontally.so
+!bw_convert.so
 
 # Executables
 *.exe
