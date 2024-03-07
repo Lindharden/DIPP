@@ -191,7 +191,7 @@ void save_images(const char *filename_base, const ImageBatch *batch)
     for (size_t i = 0; i < batch->num_images; i++)
     {
         char filename[20];
-        sprintf(filename, "/usr/share/pipeline/%s%d.png", filename_base, i);
+        sprintf(filename, "%s%d.png", filename_base, i);
 
         // Determine the desired output format (e.g., PNG)
         int stride = batch->width * batch->channels;
