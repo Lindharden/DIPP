@@ -82,7 +82,7 @@ void setup_pipeline(param_t *param, int index)
         return; // Skip this pipeline if unpacking fails
     }
 
-    int pipeline_id = param->id - PIPELINE_ID_OFFSET;
+    int pipeline_id = param->id - PIPELINE_PARAMID_OFFSET;
     pipelines[pipeline_id].pipeline_id = pipeline_id + 1;
     pipelines[pipeline_id].num_modules = pdef->n_modules;
 
@@ -110,7 +110,7 @@ void setup_module_config(param_t *param, int index)
         return; // Skip this module if unpacking fails
     }
 
-    int module_id = param->id - MODULE_PARAM_ID_OFFSET; // Minus 30 cause IDs are offset by 30 to accommodate pipeline ids (see pipeline.h)
+    int module_id = param->id - MODULE_PARAMID_OFFSET; // Minus 30 cause IDs are offset by 30 to accommodate pipeline ids (see pipeline.h)
     module_configs[module_id].base = mcon->base;
     module_configs[module_id].n_parameters = mcon->n_parameters;
     module_configs[module_id].parameters = mcon->parameters;
