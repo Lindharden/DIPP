@@ -9,7 +9,8 @@
 #define MAX_MODULES 20
 #define MAX_PIPELINES 6
 
-#define MODULE_PARAM_OFFSET 30
+#define PIPELINE_ID_OFFSET 10
+#define MODULE_PARAM_ID_OFFSET 30
 
 // Error codes
 #define SUCCESS 0

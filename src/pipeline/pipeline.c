@@ -82,15 +82,16 @@ void setup_pipeline(param_t *param, int index)
         return; // Skip this pipeline if unpacking fails
     }
 
-    pipelines[pdef->id - 1].pipeline_id = pdef->id;
-    pipelines[pdef->id - 1].num_modules = pdef->n_modules;
+    int pipeline_id = param->id - PIPELINE_ID_OFFSET;
+    pipelines[pipeline_id].pipeline_id = pipeline_id + 1;
+    pipelines[pipeline_id].num_modules = pdef->n_modules;
 
     for (size_t module_idx = 0; module_idx < pdef->n_modules; module_idx++)
     {
         ModuleDefinition *mdef = pdef->modules[module_idx];
-        pipelines[pdef->id - 1].modules[module_idx].module_name = strdup(mdef->name);
-        pipelines[pdef->id - 1].modules[module_idx].module_function = load_module(mdef->name);
-        pipelines[pdef->id - 1].modules[module_idx].module_param_id = mdef->param_id - 1;
+        pipelines[pipeline_id].modules[module_idx].module_name = strdup(mdef->name);
+        pipelines[pipeline_id].modules[module_idx].module_function = load_module(mdef->name);
+        pipelines[pipeline_id].modules[module_idx].module_param_id = mdef->param_id - 1;
     }
 }
 
@@ -109,7 +110,7 @@ void setup_module_config(param_t *param, int index)
         return; // Skip this module if unpacking fails
     }
 
-    int module_id = param->id - MODULE_PARAM_OFFSET; // Minus 30 cause IDs are offset by 30 to accommodate pipeline ids (see pipeline.h)
+    int module_id = param->id - MODULE_PARAM_ID_OFFSET; // Minus 30 cause IDs are offset by 30 to accommodate pipeline ids (see pipeline.h)
     module_configs[module_id].base = mcon->base;
     module_configs[module_id].n_parameters = mcon->n_parameters;
     module_configs[module_id].parameters = mcon->parameters;

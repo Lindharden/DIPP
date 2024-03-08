@@ -161,23 +161,11 @@ const ProtobufCMessageDescriptor module_definition__descriptor =
   (ProtobufCMessageInit) module_definition__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor pipeline_definition__field_descriptors[2] =
+static const ProtobufCFieldDescriptor pipeline_definition__field_descriptors[1] =
 {
   {
-    "id",
-    1,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT32,
-    0,   /* quantifier_offset */
-    offsetof(PipelineDefinition, id),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
     "modules",
-    2,
+    1,
     PROTOBUF_C_LABEL_REPEATED,
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(PipelineDefinition, n_modules),
@@ -189,13 +177,12 @@ static const ProtobufCFieldDescriptor pipeline_definition__field_descriptors[2] 
   },
 };
 static const unsigned pipeline_definition__field_indices_by_name[] = {
-  0,   /* field[0] = id */
-  1,   /* field[1] = modules */
+  0,   /* field[0] = modules */
 };
 static const ProtobufCIntRange pipeline_definition__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 2 }
+  { 0, 1 }
 };
 const ProtobufCMessageDescriptor pipeline_definition__descriptor =
 {
@@ -205,7 +192,7 @@ const ProtobufCMessageDescriptor pipeline_definition__descriptor =
   "PipelineDefinition",
   "",
   sizeof(PipelineDefinition),
-  2,
+  1,
   pipeline_definition__field_descriptors,
   pipeline_definition__field_indices_by_name,
   1,  pipeline_definition__number_ranges,
