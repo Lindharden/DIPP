@@ -4,6 +4,7 @@
 #include <csp/csp_rtable.h>
 #include <csp/interfaces/csp_if_zmqhub.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <param/param_server.h>
 #include <pthread.h>
