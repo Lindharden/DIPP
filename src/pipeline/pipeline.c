@@ -27,7 +27,8 @@ size_t get_param_buffer(uint8_t **out, param_t *param)
     int buf_size = (int)buf[0];
 
     *out = malloc(buf_size * sizeof(uint8_t));
-    if (!*out) {
+    if (!*out)
+    {
         return 0;
     }
 
@@ -66,47 +67,67 @@ void *load_module(char *moduleName)
     return functionPointer;
 }
 
-void setup() {
-    uint8_t *buffer = NULL; // Initialize buffer pointer to NULL
-    size_t buf_size = 0;
+void setup_pipeline(param_t *param, int index)
+{
+    uint8_t *buffer = NULL;
+    size_t buf_size = get_param_buffer(&buffer, param);
 
-    for (size_t pipeline_idx = 0; pipeline_idx < MAX_PIPELINES; pipeline_idx++) {
-        buf_size = get_param_buffer(&buffer, pipeline_configs[pipeline_idx]);
+    PipelineDefinition *pdef = pipeline_definition__unpack(NULL, buf_size, buffer);
 
-        PipelineDefinition *pdef = pipeline_definition__unpack(NULL, buf_size, buffer);
-        if (!pdef) {
-            free(buffer);
-            continue; // Skip this pipeline if unpacking fails
-        }
+    free(buffer);
+    buffer = NULL;
 
-        pipelines[pipeline_idx].pipeline_id = pdef->id;
-        pipelines[pipeline_idx].num_modules = pdef->n_modules;
+    if (!pdef)
+    {
+        return; // Skip this pipeline if unpacking fails
+    }
 
-        for (size_t module_idx = 0; module_idx < pdef->n_modules; module_idx++) {
-            // Reset buffer for the next use
-            free(buffer);
-            buffer = NULL;
+    pipelines[pdef->id - 1].pipeline_id = pdef->id;
+    pipelines[pdef->id - 1].num_modules = pdef->n_modules;
 
-            ModuleDefinition *mdef = pdef->modules[module_idx];
-
-            // Cache the parsed pipeline values
-            pipelines[pipeline_idx].modules[module_idx].module_name = strdup(mdef->name);
-            pipelines[pipeline_idx].modules[module_idx].module_function = load_module(mdef->name);
-            size_t moduleBufSize = get_param_buffer(&buffer, module_configs[mdef->param_id - 1]);
-            pipelines[pipeline_idx].modules[module_idx].module_param = module_config__unpack(NULL, moduleBufSize, buffer);
-        }
-        
-        free(buffer);
-        buffer = NULL;
+    for (size_t module_idx = 0; module_idx < pdef->n_modules; module_idx++)
+    {
+        ModuleDefinition *mdef = pdef->modules[module_idx];
+        pipelines[pdef->id - 1].modules[module_idx].module_name = strdup(mdef->name);
+        pipelines[pdef->id - 1].modules[module_idx].module_function = load_module(mdef->name);
+        pipelines[pdef->id - 1].modules[module_idx].module_param_id = mdef->param_id - 1;
     }
 }
 
-void callback_run(param_t *param, int index)
+void setup_module_config(param_t *param, int index)
 {
-    if (param_get_uint8(param) > 0)
+    uint8_t *buffer = NULL;
+    size_t buf_size = get_param_buffer(&buffer, param);
+
+    ModuleConfig *mcon = module_config__unpack(NULL, buf_size, buffer);
+
+    free(buffer);
+    buffer = NULL;
+
+    if (!mcon)
     {
-        run_pipeline();
-        param_set_uint8(param, 0);
+        return; // Skip this module if unpacking fails
+    }
+
+    int module_id = param->id - MODULE_PARAM_OFFSET; // Minus 30 cause IDs are offset by 30 to accommodate pipeline ids (see pipeline.h)
+    module_configs[module_id].base = mcon->base;
+    module_configs[module_id].n_parameters = mcon->n_parameters;
+    module_configs[module_id].parameters = mcon->parameters;
+}
+
+void setup_all_pipelines()
+{
+    for (size_t pipeline_idx = 0; pipeline_idx < MAX_PIPELINES; pipeline_idx++)
+    {
+        setup_pipeline(pipeline_config_params[pipeline_idx], 0);
+    }
+}
+
+void setup_all_modules_configs()
+{
+    for (size_t module_idx = 0; module_idx < MAX_MODULES; module_idx++)
+    {
+        setup_module_config(module_config_params[module_idx], 0);
     }
 }
 
@@ -157,7 +178,7 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
     for (size_t i = 0; i < pipeline->num_modules; ++i)
     {
         ProcessFunction module_function = pipeline->modules[i].module_function;
-        ModuleConfig *module_config = pipeline->modules[i].module_param;
+        ModuleConfig *module_config = &module_configs[pipeline->modules[i].module_param_id];
 
         int module_status = execute_module_in_process(module_function, data, outputPipe, module_config);
 
@@ -191,7 +212,7 @@ void save_images(const char *filename_base, const ImageBatch *batch)
     for (size_t i = 0; i < batch->num_images; i++)
     {
         char filename[20];
-        sprintf(filename, "%s%d.png", filename_base, i);
+        sprintf(filename, "%s%ld.png", filename_base, i);
 
         // Determine the desired output format (e.g., PNG)
         int stride = batch->width * batch->channels;
@@ -227,7 +248,8 @@ void cleanup()
 
 void run_pipeline(void)
 {
-    setup();
+    setup_all_modules_configs();
+    setup_all_pipelines();
     // TODO: Check if pipelines and modules are cached, otherwise run setup()
 
     // Create msg queue
@@ -266,14 +288,14 @@ void run_pipeline(void)
     }
 
     // Attach to shared memory from id
-    int *shmaddr = shmat(shmid, NULL, 0);
+    void *shmaddr = shmat(shmid, NULL, 0);
     datarcv.data = shmaddr; // retrieve correct address in shared memory
 
     // Execute the pipeline with parameter values
     Pipeline *pipeline;
     if (get_pipeline_by_id(datarcv.pipeline_id, &pipeline) == FAILURE)
     {
-        fprintf(stderr, "Pipeline with id '%s' does not exist.\n", datarcv.pipeline_id);
+        fprintf(stderr, "Pipeline with id '%d' does not exist.\n", datarcv.pipeline_id);
     }
 
     int status = execute_pipeline(pipeline, &datarcv);
@@ -281,7 +303,7 @@ void run_pipeline(void)
     if (status != SUCCESS)
     {
         // Print failure message
-        printf("Module named '%s' caused a failure in the pipeline\n", pipeline->modules[status - 1]);
+        printf("Module named '%s' caused a failure in the pipeline\n", pipeline->modules[status - 1].module_name);
         return;
     }
 
@@ -290,4 +312,13 @@ void run_pipeline(void)
     // Detach and free shared memory
     shmdt(shmaddr);
     shmctl(shmid, IPC_RMID, NULL);
+}
+
+void callback_run(param_t *param, int index)
+{
+    if (param_get_uint8(param) > 0)
+    {
+        run_pipeline();
+        param_set_uint8(param, 0);
+    }
 }
