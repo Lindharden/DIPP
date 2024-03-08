@@ -124,7 +124,7 @@ void setup_all_pipelines()
     }
 }
 
-void setup_all_modules_configs()
+void setup_all_module_configs()
 {
     for (size_t module_idx = 0; module_idx < MAX_MODULES; module_idx++)
     {
@@ -249,9 +249,13 @@ void cleanup()
 
 void run_pipeline(void)
 {
-    setup_all_modules_configs();
-    setup_all_pipelines();
-    // TODO: Check if pipelines and modules are cached, otherwise run setup()
+    if (!is_setup)
+    {
+        // Fetch and setup pipeline and module configurations if not done
+        setup_all_pipelines();
+        setup_all_module_configs();
+        is_setup = 1;
+    }
 
     // Create msg queue
     int msg_queue_id;

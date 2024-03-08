@@ -45,6 +45,7 @@ typedef struct Pipeline {
 static Pipeline pipelines[MAX_PIPELINES];
 static ModuleConfig module_configs[MAX_MODULES];
 
+static int is_setup = 0;
 void setup_pipeline(param_t *param, int index);
 void setup_module_config(param_t *param, int index);
 
