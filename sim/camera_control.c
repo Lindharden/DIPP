@@ -24,14 +24,14 @@ int main()
         // Prepare the data
         ImageBatch data;
         data.mtype = 1;
-        const char *filename = "20mb.png"; 
+        const char *filename = "sim_image.png"; 
         int image_width, image_height, image_channels;
         unsigned char *image_data = stbi_load(filename, &image_width, &image_height, &image_channels, STBI_rgb_alpha);
         data.height = image_height;
         data.width = image_width;
         data.channels = image_channels;
         data.num_images = 2;
-        data.shm_key = i++; // testing key
+        data.shm_key = i += 20; // testing key
         data.pipeline_id = 1;
         size_t image_size = image_height * image_width * image_channels;
         size_t data_size = image_size * data.num_images;
