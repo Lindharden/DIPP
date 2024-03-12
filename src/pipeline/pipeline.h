@@ -27,8 +27,37 @@ typedef struct ImageBatch {
     unsigned char *data; // batched image data (255 different values)
 } ImageBatch;
 
-typedef ImageBatch (*ProcessFunction)(ImageBatch *, ModuleConfig *);
+/* Local structure for saving module parameter configurations (translated from Protobuf) */
+typedef enum 
+{
+    NOT_SET = 0,
+    BOOL_VALUE = 2,
+    INT_VALUE = 3,
+    FLOAT_VALUE = 4,
+    STRING_VALUE = 5
+} ModuleParameter__ValueCase;
 
+typedef struct ModuleParameter
+{
+    char *key;
+    ModuleParameter__ValueCase value_case;
+    union {
+        int bool_value;
+        int int_value;
+        float float_value;
+        char *string_value;
+    };
+} ModuleParameter;
+
+typedef struct ModuleParameterList
+{
+    size_t n_parameters;
+    ModuleParameter **parameters;
+} ModuleParameterList;
+
+typedef ImageBatch (*ProcessFunction)(ImageBatch *, ModuleParameterList *);
+
+/* Structs for storing module and pipeline configurations */
 typedef struct Module {
     char *module_name;
     ProcessFunction module_function;
@@ -43,7 +72,7 @@ typedef struct Pipeline {
 
 /* Stashed pipelines and module parameters */
 static Pipeline pipelines[MAX_PIPELINES];
-static ModuleConfig module_configs[MAX_MODULES];
+static ModuleParameterList module_parameter_lists[MAX_MODULES];
 
 static int is_setup = 0;
 void setup_pipeline(param_t *param, int index);

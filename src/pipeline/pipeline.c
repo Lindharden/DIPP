@@ -111,9 +111,32 @@ void setup_module_config(param_t *param, int index)
     }
 
     int module_id = param->id - MODULE_PARAMID_OFFSET; // Minus 30 cause IDs are offset by 30 to accommodate pipeline ids (see pipeline.h)
-    module_configs[module_id].base = mcon->base;
-    module_configs[module_id].n_parameters = mcon->n_parameters;
-    module_configs[module_id].parameters = mcon->parameters;
+    module_parameter_lists[module_id].n_parameters = mcon->n_parameters;
+    module_parameter_lists[module_id].parameters = malloc(mcon->n_parameters * sizeof(ModuleParameter *));
+    for (size_t i = 0; i < mcon->n_parameters; i++)
+    {
+        module_parameter_lists[module_id].parameters[i] = malloc(sizeof(ModuleParameter));
+        module_parameter_lists[module_id].parameters[i]->key = mcon->parameters[i]->key;
+        module_parameter_lists[module_id].parameters[i]->value_case = mcon->parameters[i]->value_case;
+        
+        switch (mcon->parameters[i]->value_case)
+        {
+        case CONFIG_PARAMETER__VALUE_BOOL_VALUE:
+            module_parameter_lists[module_id].parameters[i]->bool_value = mcon->parameters[i]->bool_value;
+            break;
+        case CONFIG_PARAMETER__VALUE_INT_VALUE:
+            module_parameter_lists[module_id].parameters[i]->int_value = mcon->parameters[i]->int_value;
+            break;
+        case CONFIG_PARAMETER__VALUE_FLOAT_VALUE:
+            module_parameter_lists[module_id].parameters[i]->float_value = mcon->parameters[i]->float_value;
+            break;
+        case CONFIG_PARAMETER__VALUE_STRING_VALUE:
+            module_parameter_lists[module_id].parameters[i]->string_value = mcon->parameters[i]->string_value;
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 void setup_all_pipelines()
@@ -132,7 +155,7 @@ void setup_all_module_configs()
     }
 }
 
-int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outputPipe, ModuleConfig *config)
+int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outputPipe, ModuleParameterList *config)
 {
     // Create a new process
     pid_t pid = fork();
@@ -157,7 +180,7 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outp
             if (WEXITSTATUS(status) != 0)
             {
                 fprintf(stderr, "Child process exited with non-zero status\n");
-                exit(EXIT_FAILURE);
+                return FAILURE;
             }
         }
         else
@@ -179,7 +202,7 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
     for (size_t i = 0; i < pipeline->num_modules; ++i)
     {
         ProcessFunction module_function = pipeline->modules[i].module_function;
-        ModuleConfig *module_config = &module_configs[pipeline->modules[i].module_param_id];
+        ModuleParameterList *module_config = &module_parameter_lists[pipeline->modules[i].module_param_id];
 
         int module_status = execute_module_in_process(module_function, data, outputPipe, module_config);
 
@@ -195,10 +218,23 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
         data->channels = result.channels;
         data->width = result.width;
         data->height = result.height;
+        if (data->shm_key != result.shm_key) {
+            // Recieve shared memory id from result data
+            int shmid;
+            if ((shmid = shmget(result.shm_key, 0, 0)) == -1)
+            {
+                perror("Could not get shared memory");
+            }
+
+            // Attach to shared memory from id
+            void *shmaddr = shmat(shmid, NULL, 0);
+            data->data = shmaddr;
+        } else {
+            data->data = result.data;
+        }
         data->shm_key = result.shm_key;
         data->num_images = result.num_images;
         data->pipeline_id = result.pipeline_id;
-        data->data = result.data;
     }
 
     close(outputPipe[0]); // Close the read end of the pipe
