@@ -36,7 +36,7 @@ typedef struct ImageBatch {
     int num_images;
     int shm_key;
     int pipeline_id;
-    unsigned char *data; // batched image data (255 different values)
+    unsigned char *data;
 } ImageBatch;
 
 /* Local structure for saving module parameter configurations (translated from Protobuf) */

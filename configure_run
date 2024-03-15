@@ -4,4 +4,4 @@ meson setup . builddir
 cd builddir
 ninja 
 cd ..
-./builddir/ipp
+./builddir/dipp

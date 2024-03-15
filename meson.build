@@ -33,7 +33,7 @@ deps = [csp_dep,param_dep,proto_c_dep,m_dep]
 
 c_args = '-DHOSTNAME="@0@"'.format(get_option('hostname'))
 
-ipp = executable('ipp', sources,
+dipp = executable('dipp', sources,
 	dependencies : deps,
 	install : true,
 	c_args : c_args,
