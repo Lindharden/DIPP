@@ -13,41 +13,94 @@
 #include "vmem_config.h"
 #include <csp/drivers/usart.h>
 
-void * vmem_server_task(void * param) {
+void *vmem_server_task(void *param)
+{
 	vmem_server_loop(param);
 	return NULL;
 }
 
-void * router_task(void * param) {
-	while(1) {
+void *router_task(void *param)
+{
+	while (1)
+	{
 		csp_route_work();
 	}
 	return NULL;
 }
 
-static void iface_init(int argc, char *argv[]){
-    csp_iface_t * iface = NULL;
-	char *port = "localhost"; // Default port is "localhost"
+static void iface_init(int argc, char *argv[])
+{
+	csp_iface_t *iface = NULL;
+	char *interface = "ZMQ";		  // Default interface
+	char *port = "localhost";		  // Default port
+	char *kiss_device = "/dev/ttyS1"; // Default KISS device
+	char *can_device = "vcan0";		  // Default CAN device
 
-    // Check if a port argument is provided in the command line
-    if (argc > 1) {
-        port = argv[1]; // Use the provided port instead of "localhost"
-    }
-    
-	csp_zmqhub_init_filter2("ZMQ", port, 3, 8, true, &iface, NULL, CSP_ZMQPROXY_SUBSCRIBE_PORT, CSP_ZMQPROXY_PUBLISH_PORT);
+	// Check if a interface argument is provided in the command line
+	if (argc > 1)
+	{
+		interface = argv[1]; // Use the provided interface instead of "ZMQ"
+	}
 
-    iface->addr = 162;
-    iface->netmask = 8;
-    iface->name = "zmq";
-    csp_rtable_set(0, 0, iface, CSP_NO_VIA_ADDRESS);
+	// Check if a port argument is provided in the command line
+	if (argc > 2)
+	{
+		// Use the provided port/devices
+		port = argv[2];
+		kiss_device = argv[2];
+		can_device = argv[2];
+	}
+
+	if (strcmp(interface, "ZMQ") == 0)
+	{
+		/* ZMQ setup */
+		csp_zmqhub_init_filter2("ZMQ", port, 3, 8, true, &iface, NULL, CSP_ZMQPROXY_SUBSCRIBE_PORT, CSP_ZMQPROXY_PUBLISH_PORT);
+		iface->name = "zmq";
+	}
+	else if (strcmp(interface, "KISS") == 0)
+	{
+		/* KISS setup */
+		csp_usart_conf_t conf = {
+			.device = kiss_device,
+			.baudrate = 115200,
+			.databits = 8,
+			.stopbits = 1,
+			.paritysetting = 0,
+			.checkparity = 0};
+
+		int error = csp_usart_open_and_add_kiss_interface(&conf, CSP_IF_KISS_DEFAULT_NAME, &iface);
+		if (error != CSP_ERR_NONE)
+		{
+			csp_print("failed to add KISS interface [%s], error: %d\n", kiss_device, error);
+			exit(1);
+		}
+
+		iface->name = "KISS";
+	}
+	else if (strcmp(interface, "CAN") == 0)
+	{
+		int error = csp_can_socketcan_open_and_add_interface(can_device, "CAN", 0, true, &iface);
+		if (error != CSP_ERR_NONE)
+		{
+			csp_print("failed to add CAN interface [%s], error: %d\n", can_device, error);
+			return;
+		}
+
+		iface->name = "CAN";
+	}
+
+	iface->addr = 162;
+	iface->netmask = 8;
+	csp_rtable_set(0, 0, iface, CSP_NO_VIA_ADDRESS);
 	csp_iflist_add(iface);
 }
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[])
+{
 	printf("\nbootmsg\n");
 
 	srand(time(NULL));
-	
+
 	void serial_init(void);
 	serial_init();
 
@@ -56,15 +109,15 @@ int main(int argc, char *argv[]){
 	csp_init();
 
 	/* Interfaces */
-    iface_init(argc, argv);
-    csp_print("Connection table\r\n");
-    csp_conn_print_table();
+	iface_init(argc, argv);
+	csp_print("Connection table\r\n");
+	csp_conn_print_table();
 
-    csp_print("Interfaces\r\n");
-    csp_iflist_print();
+	csp_print("Interfaces\r\n");
+	csp_iflist_print();
 
-    csp_print("Route table\r\n");
-    csp_rtable_print();
+	csp_print("Route table\r\n");
+	csp_rtable_print();
 
 	csp_bind_callback(csp_service_handler, CSP_ANY);
 	csp_bind_callback(param_serve, PARAM_PORT_SERVER);
@@ -77,9 +130,10 @@ int main(int argc, char *argv[]){
 	static pthread_t vmem_server_handle;
 	pthread_create(&vmem_server_handle, NULL, &vmem_server_task, NULL);
 
-	while (1){
-        sleep(10*1000); //TODO: Handle kbd interupt
-    }
+	while (1)
+	{
+		sleep(10 * 1000); // TODO: Handle kbd interupt
+	}
 
 	return 0;
 }
