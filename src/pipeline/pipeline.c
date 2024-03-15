@@ -118,7 +118,7 @@ void setup_module_config(param_t *param, int index)
         module_parameter_lists[module_id].parameters[i] = malloc(sizeof(ModuleParameter));
         module_parameter_lists[module_id].parameters[i]->key = mcon->parameters[i]->key;
         module_parameter_lists[module_id].parameters[i]->value_case = mcon->parameters[i]->value_case;
-        
+
         switch (mcon->parameters[i]->value_case)
         {
         case CONFIG_PARAMETER__VALUE_BOOL_VALUE:
@@ -218,7 +218,8 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
         data->channels = result.channels;
         data->width = result.width;
         data->height = result.height;
-        if (data->shm_key != result.shm_key) {
+        if (data->shm_key != result.shm_key)
+        {
             // Recieve shared memory id from result data
             int shmid;
             if ((shmid = shmget(result.shm_key, 0, 0)) == -1)
@@ -229,7 +230,9 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
             // Attach to shared memory from id
             void *shmaddr = shmat(shmid, NULL, 0);
             data->data = shmaddr;
-        } else {
+        }
+        else
+        {
             data->data = result.data;
         }
         data->shm_key = result.shm_key;
@@ -278,68 +281,27 @@ int get_pipeline_by_id(int pipeline_id, Pipeline **pipeline)
     return FAILURE;
 }
 
-void cleanup()
+void process(ImageBatch *input_batch)
 {
-    // TODO: cleanup
-}
-
-void run_pipeline(void)
-{
-    if (!is_setup)
-    {
-        // Fetch and setup pipeline and module configurations if not done
-        setup_all_pipelines();
-        setup_all_module_configs();
-        is_setup = 1;
-    }
-
-    // Create msg queue
-    int msg_queue_id;
-    int MSG_QUEUE_KEY = 71;
-    if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0)) == -1)
-    {
-        perror("Could not get MSG queue");
-    }
-
-    // Check if there are messages in the queue
-    struct msqid_ds buf;
-    if (msgctl(msg_queue_id, IPC_STAT, &buf) == -1)
-    {
-        perror("msgctl error");
-    }
-
-    if (buf.msg_qnum <= 0)
-    {
-        perror("No items in the msg queue");
-        return;
-    }
-
-    // Recieve msg from queue
-    ImageBatch datarcv;
-    if (msgrcv(msg_queue_id, &datarcv, sizeof(ImageBatch) - sizeof(long), 1, 0) == -1)
-    {
-        perror("msgrcv error");
-    }
-
     // Recieve shared memory id from recieved data
     int shmid;
-    if ((shmid = shmget(datarcv.shm_key, 0, 0)) == -1)
+    if ((shmid = shmget(input_batch->shm_key, 0, 0)) == -1)
     {
         perror("Could not get shared memory");
     }
 
     // Attach to shared memory from id
     void *shmaddr = shmat(shmid, NULL, 0);
-    datarcv.data = shmaddr; // retrieve correct address in shared memory
+    input_batch->data = shmaddr; // retrieve correct address in shared memory
 
     // Execute the pipeline with parameter values
     Pipeline *pipeline;
-    if (get_pipeline_by_id(datarcv.pipeline_id, &pipeline) == FAILURE)
+    if (get_pipeline_by_id(input_batch->pipeline_id, &pipeline) == FAILURE)
     {
-        fprintf(stderr, "Pipeline with id '%d' does not exist.\n", datarcv.pipeline_id);
+        fprintf(stderr, "Pipeline with id '%d' does not exist.\n", input_batch->pipeline_id);
     }
 
-    int status = execute_pipeline(pipeline, &datarcv);
+    int status = execute_pipeline(pipeline, input_batch);
 
     if (status != SUCCESS)
     {
@@ -348,18 +310,85 @@ void run_pipeline(void)
         return;
     }
 
-    save_images("output", &datarcv);
+    save_images("output", input_batch);
 
     // Detach and free shared memory
     shmdt(shmaddr);
     shmctl(shmid, IPC_RMID, NULL);
 }
 
+void setup_cache_if_needed()
+{
+    if (!is_setup)
+    {
+        // Fetch and setup pipeline and module configurations if not done
+        setup_all_pipelines();
+        setup_all_module_configs();
+        is_setup = 1;
+    }
+}
+
+int get_message_from_queue(ImageBatch *datarcv, int do_wait)
+{
+    int msg_queue_id;
+    if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0)) == -1)
+    {
+        perror("Could not get MSG queue");
+        return FAILURE;
+    }
+
+    if (msgrcv(msg_queue_id, datarcv, sizeof(ImageBatch) - sizeof(long), 1, do_wait ? 0 : IPC_NOWAIT) == -1)
+    {
+        perror("Message queue");
+        return FAILURE;
+    }
+
+    return SUCCESS;
+}
+
+/* Process one image batch from the message queue*/
+void process_one(int do_wait)
+{
+    setup_cache_if_needed();
+    ImageBatch datarcv;
+    if (get_message_from_queue(&datarcv, do_wait) == FAILURE)
+    {
+        return;
+    }
+    process(&datarcv);
+}
+
+/* Process all image batches in the message queue*/
+void process_all(int do_wait)
+{
+    setup_cache_if_needed();
+    ImageBatch datarcv;
+    while (get_message_from_queue(&datarcv, do_wait) == SUCCESS)
+    {
+        process(&datarcv);
+    }
+}
+
 void callback_run(param_t *param, int index)
 {
-    if (param_get_uint8(param) > 0)
+    switch (param_get_uint8(param))
     {
-        run_pipeline();
-        param_set_uint8(param, 0);
+    case PROCESS_ONE:
+        process_one(0);
+        break;
+    case PROCESS_ALL:
+        process_all(0);
+        break;
+    case PROCESS_WAIT_ONE:
+        process_one(1);
+        break;
+    case PROCESS_WAIT_ALL:
+        process_all(1);
+        break;
+    default:
+        return;
     }
+
+    // Turn off pipeline when finished
+    param_set_uint8(&pipeline_run, 0);
 }

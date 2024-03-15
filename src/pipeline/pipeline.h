@@ -12,9 +12,21 @@
 #define PIPELINE_PARAMID_OFFSET 10
 #define MODULE_PARAMID_OFFSET 30
 
+#define MSG_QUEUE_KEY 71
+
 // Error codes
 #define SUCCESS 0
 #define FAILURE -1
+
+// Pipeline run codes
+typedef enum
+{
+    PROCESS_STOP = 0,
+    PROCESS_ONE = 1,
+    PROCESS_ALL = 2,
+    PROCESS_WAIT_ONE = 3,
+    PROCESS_WAIT_ALL = 4
+} PIPELINE_PROCESS;
 
 typedef struct ImageBatch {
     long mtype;
