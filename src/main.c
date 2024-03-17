@@ -35,20 +35,31 @@ static void iface_init(int argc, char *argv[])
 	char *port = "localhost";		  // Default port
 	char *kiss_device = "/dev/ttyS1"; // Default KISS device
 	char *can_device = "vcan0";		  // Default CAN device
+	int pipeline_addr = 162;		  // Default pipeline address
 
-	// Check if a interface argument is provided in the command line
-	if (argc > 1)
+	int opt;
+	while ((opt = getopt(argc, argv, "i:p:a:")) != -1)
 	{
-		interface = argv[1]; // Use the provided interface instead of "ZMQ"
-	}
-
-	// Check if a port argument is provided in the command line
-	if (argc > 2)
-	{
-		// Use the provided port/devices
-		port = argv[2];
-		kiss_device = argv[2];
-		can_device = argv[2];
+		switch (opt)
+		{
+		case 'i':
+			// Use the provided interface instead of "ZMQ"
+			interface = optarg; 
+			break;
+		case 'p':
+			// Use the provided port/devices
+			port = optarg;
+			kiss_device = optarg;
+			can_device = optarg;
+			break;
+		case 'a':
+			// Use the pipeline address
+			pipeline_addr = atoi(optarg);
+			break;
+		default:
+			fprintf(stderr, "Usage: %s [-i <interface>] [-p <port/device>] [-a <pipeline_address<´>]\n", argv[0]);
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	if (strcmp(interface, "ZMQ") == 0)
@@ -89,7 +100,7 @@ static void iface_init(int argc, char *argv[])
 		iface->name = "CAN";
 	}
 
-	iface->addr = 162;
+	iface->addr = pipeline_addr;
 	iface->netmask = 8;
 	csp_rtable_set(0, 0, iface, CSP_NO_VIA_ADDRESS);
 	csp_iflist_add(iface);
