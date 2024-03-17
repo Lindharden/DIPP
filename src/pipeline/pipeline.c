@@ -213,9 +213,9 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
 
         ImageBatch result;
         read(outputPipe[0], &result, sizeof(result)); // Read the result from the pipe
-        data->channels = result.channels;
         data->width = result.width;
         data->height = result.height;
+        data->channels = result.channels;
         if (data->shm_key != result.shm_key)
         {
             // Recieve shared memory id from result data
@@ -235,6 +235,7 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
         }
         data->shm_key = result.shm_key;
         data->num_images = result.num_images;
+        data->batch_size = result.batch_size;
         data->pipeline_id = result.pipeline_id;
     }
 
@@ -246,15 +247,18 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
 
 void save_images(const char *filename_base, const ImageBatch *batch)
 {
-    int image_size = batch->width * batch->height * batch->channels;
-    for (size_t i = 0; i < batch->num_images; i++)
-    {
-        char filename[20];
-        sprintf(filename, "%s%ld.png", filename_base, i);
+    size_t offset = 0;
+    int image_index = 0;
+    
+    while (image_index < batch->num_images && offset < batch->batch_size) {
+        size_t image_size = *((size_t *)(batch->data + offset));
+        offset += sizeof(size_t); // Move the offset to the start of the image data
 
-        // Determine the desired output format (e.g., PNG)
-        int stride = batch->width * batch->channels;
-        int success = stbi_write_png(filename, batch->width, batch->height, batch->channels, &batch->data[i * image_size], stride);
+        char filename[20];
+        sprintf(filename, "%s%d.png", filename_base, image_index);
+
+        int stride = batch->width * batch->channels * sizeof(uint8_t);
+        int success = stbi_write_png(filename, batch->width, batch->height, batch->channels, batch->data + offset, stride);
         if (!success)
         {
             fprintf(stderr, "Error writing image to %s\n", filename);
@@ -263,6 +267,10 @@ void save_images(const char *filename_base, const ImageBatch *batch)
         {
             printf("Image saved as %s\n", filename);
         }
+
+        offset += image_size; // Move the offset to the start of the next image block
+
+        image_index++;
     }
 }
 
