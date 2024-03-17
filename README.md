@@ -21,15 +21,15 @@ ninja
 or simply execute the script `configure`.
 
 ## Run the Pipeline
-Run the `dipp` binary from the `builddir` directory using `./builddir/dipp <arg_1> <arg_2>`. The `dipp` binary supports the following arguments:
+Run the `dipp` binary from the `builddir` directory using `./builddir/dipp [OPTIONS]`. The `dipp` binary supports the following arguments:
 
-| **Arg 1 (Interface)** | **Arg 2 (device/port)** | **Description**                                                   |
-|-----------------------|--------------------------|------------------------------------------------------------------|
-| ZMQ                   | IP address of ZMQ proxy  | Run the pipeline with ZMQ (requires running ZMQ proxy).         |
-| KISS                  | KISS device              | Run the pipeline with a defined KISS device.                     |
-| CAN                   | CAN device               | Run the pipeline with a defined CAN device.                      |
+| **Flag** | **Default value** | **Description**                                                             |
+|----------|-------------------|-----------------------------------------------------------------------------|
+| `-i`     | `ZMQ`             |  The connection interface to utilize for the pipeline. Possible values are: <br> - `ZMQ`: Run the pipeline with ZMQ (requires running ZMQ proxy). <br> - `KISS`: Run the pipeline with a defined KISS device. <br> - `CAN`: Run the pipeline with a defined CAN device. |
+| `-p`     | `localhost`       | Port or device to use for the specified connection interface. Examples are: <br> - `/dev/ttyS1` (KISS) <br> - `vcan0` (CAN) |
+| `-a`     | `162`             | CSP node address for the DIPP application.                                  |
 
-The pipeline acts as a CSP/Param application with node id 162.
+The pipeline will act as a CSP/Param application.
 
 ## Pipeline data format
 The pipeline processes batched image data that is stored in shared memory. The pipeline expects to receive metadata on the image batches through a System V Message Queue (ID: 71). The image batch metadata will be included in a `ImageBatch` struct of the following form:
@@ -40,6 +40,7 @@ typedef struct ImageBatch {
     int width;           /* width of images */
     int channels;        /* channels of images */
     int num_images;      /* amount of images */
+    int batch_size;      /* size of the image batch */
     int shm_key;         /* key to shared memory segment of image data */
     int pipeline_id;     /* id of pipeline to utilize for processing */
     unsigned char *data; /* address to image data (in shared memory) */
