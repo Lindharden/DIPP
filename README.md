@@ -14,7 +14,7 @@ Configuration of pipeline stages and module parameters are to be done through a 
 ## Build the Pipeline
 To build the project run the following commands:
 ```
-meson . builddir
+meson setup . builddir
 ninja -C builddir
 ```
 or simply execute the script `configure`.
