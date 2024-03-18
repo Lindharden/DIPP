@@ -53,7 +53,7 @@ For testing purposes a camera simulating program is included in the `sim` folder
 ```
 gcc -o camera camera_control.h -lm
 ```
-Now run it with `./camera`. To enqueue an image batch, type whatever and hit enter. NB: place a PNG image in the `sim` folder and name it `input.png`.
+Now run it with `./camera <pipeline_id>` (default pipeline_id = 1). To enqueue an image batch, type a positive integer indicating the desired number of images in the batch and hit enter. NB: place a PNG image in the `sim` folder and name it `input.png`.
 
 ## Activate the pipeline
 To activate the pipeline, utilize the `pipeline_run` parameter on the CSP node through CSH. Navigate to `node 162` (default port), and download the list of parameters using `list download`. Set the `pipeline_run` parameter to one of the following values:
