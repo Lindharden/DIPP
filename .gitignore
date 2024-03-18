@@ -35,8 +35,8 @@
 *.so.*
 *.dylib
 
-!flip_horizontally-aarch64.so
-!bw_convert-aarch64.so
+!mirror_aarch64.so
+!gray_aarch64.so
 
 # Executables
 *.exe

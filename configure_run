@@ -1,7 +1,5 @@
 #!/bin/sh
 rm -r builddir
 meson setup . builddir
-cd builddir
-ninja 
-cd ..
-./builddir/ipp
+ninja -C builddir
+./builddir/dipp

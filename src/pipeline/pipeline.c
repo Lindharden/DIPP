@@ -27,7 +27,8 @@ size_t get_param_buffer(uint8_t **out, param_t *param)
     int buf_size = (int)buf[0];
 
     *out = malloc(buf_size * sizeof(uint8_t));
-    if (!*out) {
+    if (!*out)
+    {
         return 0;
     }
 
@@ -66,51 +67,95 @@ void *load_module(char *moduleName)
     return functionPointer;
 }
 
-void setup() {
-    uint8_t *buffer = NULL; // Initialize buffer pointer to NULL
-    size_t buf_size = 0;
-
-    for (size_t pipeline_idx = 0; pipeline_idx < MAX_PIPELINES; pipeline_idx++) {
-        buf_size = get_param_buffer(&buffer, pipeline_configs[pipeline_idx]);
-
-        PipelineDefinition *pdef = pipeline_definition__unpack(NULL, buf_size, buffer);
-        if (!pdef) {
-            free(buffer);
-            continue; // Skip this pipeline if unpacking fails
-        }
-
-        pipelines[pipeline_idx].pipeline_id = pdef->id;
-        pipelines[pipeline_idx].num_modules = pdef->n_modules;
-
-        for (size_t module_idx = 0; module_idx < pdef->n_modules; module_idx++) {
-            // Reset buffer for the next use
-            free(buffer);
-            buffer = NULL;
-
-            ModuleDefinition *mdef = pdef->modules[module_idx];
-
-            // Cache the parsed pipeline values
-            pipelines[pipeline_idx].modules[module_idx].module_name = strdup(mdef->name);
-            pipelines[pipeline_idx].modules[module_idx].module_function = load_module(mdef->name);
-            size_t moduleBufSize = get_param_buffer(&buffer, module_configs[mdef->param_id - 1]);
-            pipelines[pipeline_idx].modules[module_idx].module_param = module_config__unpack(NULL, moduleBufSize, buffer);
-        }
-        
-        free(buffer);
-        buffer = NULL;
-    }
-}
-
-void callback_run(param_t *param, int index)
+void setup_pipeline(param_t *param, int index)
 {
-    if (param_get_uint8(param) > 0)
+    uint8_t *buffer = NULL;
+    size_t buf_size = get_param_buffer(&buffer, param);
+
+    PipelineDefinition *pdef = pipeline_definition__unpack(NULL, buf_size, buffer);
+
+    free(buffer);
+    buffer = NULL;
+
+    if (!pdef)
     {
-        run_pipeline();
-        param_set_uint8(param, 0);
+        return; // Skip this pipeline if unpacking fails
+    }
+
+    int pipeline_id = param->id - PIPELINE_PARAMID_OFFSET;
+    pipelines[pipeline_id].pipeline_id = pipeline_id + 1;
+    pipelines[pipeline_id].num_modules = pdef->n_modules;
+
+    for (size_t module_idx = 0; module_idx < pdef->n_modules; module_idx++)
+    {
+        ModuleDefinition *mdef = pdef->modules[module_idx];
+        pipelines[pipeline_id].modules[module_idx].module_name = strdup(mdef->name);
+        pipelines[pipeline_id].modules[module_idx].module_function = load_module(mdef->name);
+        pipelines[pipeline_id].modules[module_idx].module_param_id = mdef->param_id - 1;
     }
 }
 
-int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outputPipe, ModuleConfig *config)
+void setup_module_config(param_t *param, int index)
+{
+    uint8_t *buffer = NULL;
+    size_t buf_size = get_param_buffer(&buffer, param);
+
+    ModuleConfig *mcon = module_config__unpack(NULL, buf_size, buffer);
+
+    free(buffer);
+    buffer = NULL;
+
+    if (!mcon)
+    {
+        return; // Skip this module if unpacking fails
+    }
+
+    int module_id = param->id - MODULE_PARAMID_OFFSET; // Minus 30 cause IDs are offset by 30 to accommodate pipeline ids (see pipeline.h)
+    module_parameter_lists[module_id].n_parameters = mcon->n_parameters;
+    module_parameter_lists[module_id].parameters = malloc(mcon->n_parameters * sizeof(ModuleParameter *));
+    for (size_t i = 0; i < mcon->n_parameters; i++)
+    {
+        module_parameter_lists[module_id].parameters[i] = malloc(sizeof(ModuleParameter));
+        module_parameter_lists[module_id].parameters[i]->key = mcon->parameters[i]->key;
+        module_parameter_lists[module_id].parameters[i]->value_case = mcon->parameters[i]->value_case;
+
+        switch (mcon->parameters[i]->value_case)
+        {
+        case CONFIG_PARAMETER__VALUE_BOOL_VALUE:
+            module_parameter_lists[module_id].parameters[i]->bool_value = mcon->parameters[i]->bool_value;
+            break;
+        case CONFIG_PARAMETER__VALUE_INT_VALUE:
+            module_parameter_lists[module_id].parameters[i]->int_value = mcon->parameters[i]->int_value;
+            break;
+        case CONFIG_PARAMETER__VALUE_FLOAT_VALUE:
+            module_parameter_lists[module_id].parameters[i]->float_value = mcon->parameters[i]->float_value;
+            break;
+        case CONFIG_PARAMETER__VALUE_STRING_VALUE:
+            module_parameter_lists[module_id].parameters[i]->string_value = mcon->parameters[i]->string_value;
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+void setup_all_pipelines()
+{
+    for (size_t pipeline_idx = 0; pipeline_idx < MAX_PIPELINES; pipeline_idx++)
+    {
+        setup_pipeline(pipeline_config_params[pipeline_idx], 0);
+    }
+}
+
+void setup_all_module_configs()
+{
+    for (size_t module_idx = 0; module_idx < MAX_MODULES; module_idx++)
+    {
+        setup_module_config(module_config_params[module_idx], 0);
+    }
+}
+
+int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outputPipe, ModuleParameterList *config)
 {
     // Create a new process
     pid_t pid = fork();
@@ -135,7 +180,7 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outp
             if (WEXITSTATUS(status) != 0)
             {
                 fprintf(stderr, "Child process exited with non-zero status\n");
-                exit(EXIT_FAILURE);
+                return FAILURE;
             }
         }
         else
@@ -157,7 +202,7 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
     for (size_t i = 0; i < pipeline->num_modules; ++i)
     {
         ProcessFunction module_function = pipeline->modules[i].module_function;
-        ModuleConfig *module_config = pipeline->modules[i].module_param;
+        ModuleParameterList *module_config = &module_parameter_lists[pipeline->modules[i].module_param_id];
 
         int module_status = execute_module_in_process(module_function, data, outputPipe, module_config);
 
@@ -170,13 +215,30 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
 
         ImageBatch result;
         read(outputPipe[0], &result, sizeof(result)); // Read the result from the pipe
-        data->channels = result.channels;
         data->width = result.width;
         data->height = result.height;
+        data->channels = result.channels;
+        if (data->shm_key != result.shm_key)
+        {
+            // Recieve shared memory id from result data
+            int shmid;
+            if ((shmid = shmget(result.shm_key, 0, 0)) == -1)
+            {
+                perror("Could not get shared memory");
+            }
+
+            // Attach to shared memory from id
+            void *shmaddr = shmat(shmid, NULL, 0);
+            data->data = shmaddr;
+        }
+        else
+        {
+            data->data = result.data;
+        }
         data->shm_key = result.shm_key;
         data->num_images = result.num_images;
+        data->batch_size = result.batch_size;
         data->pipeline_id = result.pipeline_id;
-        data->data = result.data;
     }
 
     close(outputPipe[0]); // Close the read end of the pipe
@@ -187,15 +249,18 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
 
 void save_images(const char *filename_base, const ImageBatch *batch)
 {
-    int image_size = batch->width * batch->height * batch->channels;
-    for (size_t i = 0; i < batch->num_images; i++)
-    {
-        char filename[20];
-        sprintf(filename, "%s%d.png", filename_base, i);
+    size_t offset = 0;
+    int image_index = 0;
+    
+    while (image_index < batch->num_images && offset < batch->batch_size) {
+        size_t image_size = *((size_t *)(batch->data + offset));
+        offset += sizeof(size_t); // Move the offset to the start of the image data
 
-        // Determine the desired output format (e.g., PNG)
-        int stride = batch->width * batch->channels;
-        int success = stbi_write_png(filename, batch->width, batch->height, batch->channels, &batch->data[i * image_size], stride);
+        char filename[20];
+        sprintf(filename, "%s%d.png", filename_base, image_index);
+
+        int stride = batch->width * batch->channels * sizeof(uint8_t);
+        int success = stbi_write_png(filename, batch->width, batch->height, batch->channels, batch->data + offset, stride);
         if (!success)
         {
             fprintf(stderr, "Error writing image to %s\n", filename);
@@ -204,6 +269,10 @@ void save_images(const char *filename_base, const ImageBatch *batch)
         {
             printf("Image saved as %s\n", filename);
         }
+
+        offset += image_size; // Move the offset to the start of the next image block
+
+        image_index++;
     }
 }
 
@@ -220,11 +289,6 @@ int get_pipeline_by_id(int pipeline_id, Pipeline **pipeline)
     return FAILURE;
 }
 
-void cleanup()
-{
-    // TODO: cleanup
-}
-
 void camera_sim()
 {
     // Prepare the data
@@ -238,18 +302,26 @@ void camera_sim()
     data.width = image_width;
     data.channels = image_channels;
     data.num_images = 2;
-    data.shm_key = i++; // testing key
+    data.shm_key = i += 20; // testing key
     data.pipeline_id = 1;
     size_t image_size = image_height * image_width * image_channels;
-    size_t data_size = image_size * data.num_images;
+    size_t data_size = (image_size + sizeof(size_t)) * data.num_images;
+    data.batch_size = data_size;
     int shmid = shmget(data.shm_key, data_size, IPC_CREAT | 0666);
     char *shmaddr = shmat(shmid, NULL, 0);
-    memcpy(shmaddr, image_data, image_size); // Copy image batch data to shared memory
-    memcpy(shmaddr + image_size, image_data, image_size); // Copy image batch data to shared memory
+    int offset = 0;
+    for (size_t i = 0; i < data.num_images; i++)
+    {
+        // Insert image size before image data
+        memcpy(shmaddr + offset, &image_size, sizeof(size_t));
+        offset += sizeof(size_t);
+        memcpy(shmaddr + offset, image_data, image_size);
+        offset += image_size;
+    }
 
     // create msg queue
     int msg_queue_id;
-    if ((msg_queue_id = msgget(75, 0666 | IPC_CREAT)) == -1)
+    if ((msg_queue_id = msgget(71, 0666 | IPC_CREAT)) == -1)
     {
         perror("msgget error");
     }
@@ -260,74 +332,119 @@ void camera_sim()
         perror("msgsnd error");
     }
 
-    printf("Image sent!\n");
+    printf("Image batch sent!\n");
 }
 
-void run_pipeline(void)
+void process(ImageBatch *input_batch)
 {
-    setup();
-    // TODO: Check if pipelines and modules are cached, otherwise run setup()
-
-    camera_sim();
-
-    // Create msg queue
-    int msg_queue_id;
-    int MSG_QUEUE_KEY = 75;
-    if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0)) == -1)
-    {
-        perror("Could not get MSG queue");
-    }
-
-    // Check if there are messages in the queue
-    struct msqid_ds buf;
-    if (msgctl(msg_queue_id, IPC_STAT, &buf) == -1)
-    {
-        perror("msgctl error");
-    }
-
-    if (buf.msg_qnum <= 0)
-    {
-        perror("No items in the msg queue");
-        return;
-    }
-
-    // Recieve msg from queue
-    ImageBatch datarcv;
-    if (msgrcv(msg_queue_id, &datarcv, sizeof(ImageBatch) - sizeof(long), 1, 0) == -1)
-    {
-        perror("msgrcv error");
-    }
-
     // Recieve shared memory id from recieved data
     int shmid;
-    if ((shmid = shmget(datarcv.shm_key, 0, 0)) == -1)
+    if ((shmid = shmget(input_batch->shm_key, 0, 0)) == -1)
     {
         perror("Could not get shared memory");
     }
 
     // Attach to shared memory from id
-    int *shmaddr = shmat(shmid, NULL, 0);
-    datarcv.data = shmaddr; // retrieve correct address in shared memory
+    void *shmaddr = shmat(shmid, NULL, 0);
+    input_batch->data = shmaddr; // retrieve correct address in shared memory
 
     // Execute the pipeline with parameter values
     Pipeline *pipeline;
-    if (get_pipeline_by_id(datarcv.pipeline_id, &pipeline) == FAILURE)
+    if (get_pipeline_by_id(input_batch->pipeline_id, &pipeline) == FAILURE)
     {
-        fprintf(stderr, "Pipeline with id '%s' does not exist.\n", datarcv.pipeline_id);
+        fprintf(stderr, "Pipeline with id '%d' does not exist.\n", input_batch->pipeline_id);
     }
 
-    int status = execute_pipeline(pipeline, &datarcv);
+    int status = execute_pipeline(pipeline, input_batch);
 
     if (status != SUCCESS)
     {
         // Print failure message
-        printf("Module named '%s' caused a failure in the pipeline\n", pipeline->modules[status - 1]);
+        printf("Module named '%s' caused a failure in the pipeline\n", pipeline->modules[status - 1].module_name);
         return;
     }
 
-    save_images("output", &datarcv);
+    save_images("output", input_batch);
 
     // Detach and free shared memory
     shmdt(shmaddr);
     shmctl(shmid, IPC_RMID, NULL);
+}
+
+void setup_cache_if_needed()
+{
+    if (!is_setup)
+    {
+        // Fetch and setup pipeline and module configurations if not done
+        setup_all_pipelines();
+        setup_all_module_configs();
+        is_setup = 1;
+    }
+}
+
+int get_message_from_queue(ImageBatch *datarcv, int do_wait)
+{
+    int msg_queue_id;
+    if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0)) == -1)
+    {
+        perror("Could not get MSG queue");
+        return FAILURE;
+    }
+
+    if (msgrcv(msg_queue_id, datarcv, sizeof(ImageBatch) - sizeof(long), 1, do_wait ? 0 : IPC_NOWAIT) == -1)
+    {
+        perror("Message queue");
+        return FAILURE;
+    }
+
+    return SUCCESS;
+}
+
+/* Process one image batch from the message queue*/
+void process_one(int do_wait)
+{
+    setup_cache_if_needed();
+    ImageBatch datarcv;
+    if (get_message_from_queue(&datarcv, do_wait) == FAILURE)
+    {
+        return;
+    }
+    process(&datarcv);
+}
+
+/* Process all image batches in the message queue*/
+void process_all(int do_wait)
+{
+    setup_cache_if_needed();
+    ImageBatch datarcv;
+    while (get_message_from_queue(&datarcv, do_wait) == SUCCESS)
+    {
+        process(&datarcv);
+    }
+}
+
+void callback_run(param_t *param, int index)
+{   
+    camera_sim();
+    
+    switch (param_get_uint8(param))
+    {
+    case PROCESS_ONE:
+        process_one(0);
+        break;
+    case PROCESS_ALL:
+        process_all(0);
+        break;
+    case PROCESS_WAIT_ONE:
+        process_one(1);
+        break;
+    case PROCESS_WAIT_ALL:
+        process_all(1);
+        break;
+    default:
+        return;
+    }
+
+    // Turn off pipeline when finished
+    param_set_uint8(&pipeline_run, 0);
 }
