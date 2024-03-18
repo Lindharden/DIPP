@@ -13,8 +13,6 @@
 #include "pipeline.h"
 #include "module_config.pb-c.h"
 #include "pipeline_config.pb-c.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
@@ -289,52 +287,6 @@ int get_pipeline_by_id(int pipeline_id, Pipeline **pipeline)
     return FAILURE;
 }
 
-void camera_sim()
-{
-    // Prepare the data
-    int i = 300;
-    ImageBatch data;
-    data.mtype = 1;
-    const char *filename = "/usr/share/pipeline/test.png"; 
-    int image_width, image_height, image_channels;
-    unsigned char *image_data = stbi_load(filename, &image_width, &image_height, &image_channels, STBI_rgb_alpha);
-    data.height = image_height;
-    data.width = image_width;
-    data.channels = image_channels;
-    data.num_images = 2;
-    data.shm_key = i += 20; // testing key
-    data.pipeline_id = 1;
-    size_t image_size = image_height * image_width * image_channels;
-    size_t data_size = (image_size + sizeof(size_t)) * data.num_images;
-    data.batch_size = data_size;
-    int shmid = shmget(data.shm_key, data_size, IPC_CREAT | 0666);
-    char *shmaddr = shmat(shmid, NULL, 0);
-    int offset = 0;
-    for (size_t i = 0; i < data.num_images; i++)
-    {
-        // Insert image size before image data
-        memcpy(shmaddr + offset, &image_size, sizeof(size_t));
-        offset += sizeof(size_t);
-        memcpy(shmaddr + offset, image_data, image_size);
-        offset += image_size;
-    }
-
-    // create msg queue
-    int msg_queue_id;
-    if ((msg_queue_id = msgget(71, 0666 | IPC_CREAT)) == -1)
-    {
-        perror("msgget error");
-    }
-
-    // send msg to queue
-    if (msgsnd(msg_queue_id, &data, sizeof(data) - sizeof(long), 0) == -1)
-    {
-        perror("msgsnd error");
-    }
-
-    printf("Image batch sent!\n");
-}
-
 void process(ImageBatch *input_batch)
 {
     // Recieve shared memory id from recieved data
@@ -424,9 +376,7 @@ void process_all(int do_wait)
 }
 
 void callback_run(param_t *param, int index)
-{   
-    camera_sim();
-    
+{       
     switch (param_get_uint8(param))
     {
     case PROCESS_ONE:
