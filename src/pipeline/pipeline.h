@@ -1,6 +1,7 @@
 #include "../param_config.h"
 #include "../vmem_config.h"
 #include "module_config.pb-c.h"
+#include "error.h"
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -17,6 +18,7 @@
 // Error codes
 #define SUCCESS 0
 #define FAILURE -1
+#define CRASH -2
 
 // Pipeline run codes
 typedef enum
@@ -68,7 +70,7 @@ typedef struct ModuleParameterList
     ModuleParameter **parameters;
 } ModuleParameterList;
 
-typedef ImageBatch (*ProcessFunction)(ImageBatch *, ModuleParameterList *);
+typedef ImageBatch (*ProcessFunction)(ImageBatch *, ModuleParameterList *, int *);
 
 /* Structs for storing module and pipeline configurations */
 typedef struct Module {
@@ -135,3 +137,6 @@ static param_t *pipeline_config_params[] = {
 static uint8_t _pipeline_run = 0;
 void callback_run(param_t *param, int index);
 PARAM_DEFINE_STATIC_RAM(PARAMID_PIPELINE_RUN, pipeline_run, PARAM_TYPE_UINT8, -1, 0, PM_CONF, callback_run, NULL, &_pipeline_run, "Set the pipeline to execute the file");
+
+/* Define error log parameters */
+PARAM_DEFINE_STATIC_VMEM(PARAMID_ERROR_LOG, log_status, PARAM_TYPE_UINT32, sizeof(uint32_t), 0, PM_READONLY, NULL, NULL, log, VMEM_ERROR_CODE, "Latest error code");

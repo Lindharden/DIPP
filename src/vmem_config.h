@@ -29,3 +29,7 @@ extern vmem_t vmem_config;
 #define VMEM_CONF_MODULE_18 0x10E4  // 188 bytes apart from previous address
 #define VMEM_CONF_MODULE_19 0x11A0  // 188 bytes apart from previous address
 #define VMEM_CONF_MODULE_20 0x125C  // 188 bytes apart from previous address
+
+extern vmem_t vmem_log;
+
+#define VMEM_ERROR_CODE 0x00
