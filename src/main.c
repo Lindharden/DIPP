@@ -12,6 +12,7 @@
 #include <vmem/vmem_file.h>
 #include "vmem_config.h"
 #include <csp/drivers/usart.h>
+#include <csp/drivers/can_socketcan.h>
 
 void *vmem_server_task(void *param)
 {
@@ -90,7 +91,7 @@ static void iface_init(int argc, char *argv[])
 	}
 	else if (strcmp(interface, "CAN") == 0)
 	{
-		int error = csp_can_socketcan_open_and_add_interface(can_device, "CAN", 0, true, &iface);
+		int error = csp_can_socketcan_open_and_add_interface(can_device, "CAN", 163, 1000000, true, &iface);
 		if (error != CSP_ERR_NONE)
 		{
 			csp_print("failed to add CAN interface [%s], error: %d\n", can_device, error);
