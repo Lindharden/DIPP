@@ -19,11 +19,12 @@ project('pipeline', 'c',subproject_dir: 'lib',default_options: [
 sources = files([
 	'src/main.c',
 	'src/serial.c',
-	'src/pipeline/pipeline.c',
-	'src/pipeline/error.c',
+	'src/dipp_main.c',
+	'src/dipp_error.c',
+	'src/dipp_configs.c',
 	'src/vmem_storage.c',
-	'src/pipeline/module_config.pb-c.c',
-	'src/pipeline/pipeline_config.pb-c.c',
+	'src/module_config.pb-c.c',
+	'src/pipeline_config.pb-c.c',
 ])
 
 csp_dep = dependency('csp', fallback: ['csp', 'csp_dep'])
@@ -35,6 +36,7 @@ deps = [csp_dep,param_dep,proto_c_dep,m_dep]
 c_args = '-DHOSTNAME="@0@"'.format(get_option('hostname'))
 
 dipp = executable('dipp', sources,
+	include_directories : ['src/include'],
 	dependencies : deps,
 	install : true,
 	c_args : c_args,

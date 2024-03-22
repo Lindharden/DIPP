@@ -1,6 +1,9 @@
-#include "../paramid.h"
-#include "../vmem_storage.h"
-#include "module_config.pb-c.h"
+#ifndef DIPP_CONFIGS_H
+#define DIPP_CONFIGS_H
+
+#include "dipp_paramids.h"
+#include "vmem_storage.h"
+#include <param/param.h>
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -12,33 +15,18 @@
 #define PIPELINE_PARAMID_OFFSET 10
 #define MODULE_PARAMID_OFFSET 30
 
-#define MSG_QUEUE_KEY 71
+/* Structs for storing module and pipeline configurations */
+typedef struct Module {
+    char *module_name;
+    void *module_function;
+    int module_param_id;
+} Module;
 
-// Error codes
-#define SUCCESS 0
-#define FAILURE -1
-
-// Pipeline run codes
-typedef enum
-{
-    PROCESS_STOP = 0,
-    PROCESS_ONE = 1,
-    PROCESS_ALL = 2,
-    PROCESS_WAIT_ONE = 3,
-    PROCESS_WAIT_ALL = 4
-} PIPELINE_PROCESS;
-
-typedef struct ImageBatch {
-    long mtype;          /* message type to read from the message queue */
-    int height;          /* height of images */
-    int width;           /* width of images */
-    int channels;        /* channels of images */
-    int num_images;      /* amount of images */
-    int batch_size;      /* size of the image batch */
-    int shm_key;         /* key to shared memory segment of image data */
-    int pipeline_id;     /* id of pipeline to utilize for processing */
-    unsigned char *data; /* address to image data (in shared memory) */
-} ImageBatch;
+typedef struct Pipeline {
+    int pipeline_id;
+    Module modules[MAX_MODULES];
+    int num_modules;
+} Pipeline;
 
 /* Local structure for saving module parameter configurations (translated from Protobuf) */
 typedef enum 
@@ -68,26 +56,12 @@ typedef struct ModuleParameterList
     ModuleParameter **parameters;
 } ModuleParameterList;
 
-typedef ImageBatch (*ProcessFunction)(ImageBatch *, ModuleParameterList *, int *);
-
-/* Structs for storing module and pipeline configurations */
-typedef struct Module {
-    char *module_name;
-    ProcessFunction module_function;
-    int module_param_id;
-} Module;
-
-typedef struct Pipeline {
-    int pipeline_id;
-    Module modules[MAX_MODULES];
-    int num_modules;
-} Pipeline;
-
 /* Stashed pipelines and module parameters */
-static Pipeline pipelines[MAX_PIPELINES];
-static ModuleParameterList module_parameter_lists[MAX_MODULES];
+Pipeline pipelines[MAX_PIPELINES];
+ModuleParameterList module_parameter_lists[MAX_MODULES];
 
-static int is_setup = 0;
+int is_setup = 0;
+void setup_cache_if_needed();
 void setup_pipeline(param_t *param, int index);
 void setup_module_config(param_t *param, int index);
 
@@ -112,7 +86,7 @@ PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_17, module_param_17, PARAM_TYPE_DA
 PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_18, module_param_18, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, setup_module_config, NULL, storage, VMEM_CONF_MODULE_18, NULL);
 PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_19, module_param_19, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, setup_module_config, NULL, storage, VMEM_CONF_MODULE_19, NULL);
 PARAM_DEFINE_STATIC_VMEM(PARAMID_MODULE_PARAM_20, module_param_20, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, setup_module_config, NULL, storage, VMEM_CONF_MODULE_20, NULL);
-static param_t *module_config_params[] = {
+param_t *module_config_params[] = {
     &module_param_1,  &module_param_2,  &module_param_3,  &module_param_4,  &module_param_5, 
     &module_param_6,  &module_param_7,  &module_param_8,  &module_param_9,  &module_param_10, 
     &module_param_11, &module_param_12, &module_param_13, &module_param_14, &module_param_15, 
@@ -126,15 +100,9 @@ PARAM_DEFINE_STATIC_VMEM(PARAMID_PIPELINE_CONFIG_3, pipeline_config_3, PARAM_TYP
 PARAM_DEFINE_STATIC_VMEM(PARAMID_PIPELINE_CONFIG_4, pipeline_config_4, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, setup_pipeline, NULL, storage, VMEM_CONF_PIPELINE_4, NULL);
 PARAM_DEFINE_STATIC_VMEM(PARAMID_PIPELINE_CONFIG_5, pipeline_config_5, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, setup_pipeline, NULL, storage, VMEM_CONF_PIPELINE_5, NULL);
 PARAM_DEFINE_STATIC_VMEM(PARAMID_PIPELINE_CONFIG_6, pipeline_config_6, PARAM_TYPE_DATA, DATA_PARAM_SIZE, 0, PM_CONF, setup_pipeline, NULL, storage, VMEM_CONF_PIPELINE_6, NULL);
-static param_t *pipeline_config_params[] = {
+param_t *pipeline_config_params[] = {
     &pipeline_config_1, &pipeline_config_2, &pipeline_config_3, 
     &pipeline_config_4, &pipeline_config_5, &pipeline_config_6
 };
 
-/* Define a pipeline_run parameter */
-static uint8_t _pipeline_run = 0;
-void callback_run(param_t *param, int index);
-PARAM_DEFINE_STATIC_RAM(PARAMID_PIPELINE_RUN, pipeline_run, PARAM_TYPE_UINT8, -1, 0, PM_CONF, callback_run, NULL, &_pipeline_run, "Set the pipeline to execute the file");
-
-/* Define error log parameters */
-PARAM_DEFINE_STATIC_VMEM(PARAMID_ERROR_LOG, log_status, PARAM_TYPE_UINT32, -1, 0, PM_CONF, NULL, NULL, storage, VMEM_ERROR_CODE, "Latest error code");
+#endif
