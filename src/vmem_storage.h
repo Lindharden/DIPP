@@ -1,6 +1,6 @@
 #pragma once
 #include <vmem/vmem.h>
-extern vmem_t vmem_config;
+extern vmem_t vmem_storage;
 
 #define VMEM_CONF_PIPELINE_1 0x00   // 188 bytes to next address
 #define VMEM_CONF_PIPELINE_2 0xBC   // 188 bytes apart from previous address
@@ -30,6 +30,4 @@ extern vmem_t vmem_config;
 #define VMEM_CONF_MODULE_19 0x11A0  // 188 bytes apart from previous address
 #define VMEM_CONF_MODULE_20 0x125C  // 188 bytes apart from previous address
 
-extern vmem_t vmem_log;
-
-#define VMEM_ERROR_CODE 0x00
+#define VMEM_ERROR_CODE 0x1318

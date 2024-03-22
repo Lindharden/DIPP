@@ -1,77 +1,39 @@
-
+#include <stdlib.h>
+#include <stdint.h>
 
 /* Error domain codes */
-typedef enum
+typedef enum ERROR_CODE
 {
-    PRELOADING = 1,
-    DATA_RECEPTION = 2,
-    PROCESSING = 3,
-    OFFLOADING = 4
-} ERROR_DOMAIN;
+    MEMORY_MALLOC = 100,
+    MEMORY_REALLOC = 101,
+    MEMORY_FREE = 102,
 
-/* Preloading codes */
-typedef enum
-{
-    SETUP_MODULE = 1,
-    SETUP_PIPELINE = 2,
-    SETUP_LOAD_PARAM = 3,
-} PRELOADING_DOMAIN;
+    MSGQ_NOT_FOUND = 200,
+    MSGQ_EMPTY = 201,
 
-/* Module codes */
-typedef enum
-{
-    MODULE_FIND_SO_FILE = 1,
-    MODULE_MEMORY_ALLOCATION = 2,
-} MODULE_DOMAIN;
+    SHM_NOT_FOUND = 300,
+    SHM_DETACH = 301,
+    SHM_REMOVE = 302,
+    SHM_ATTACH = 303,
 
-/* Find SO File codes */
-typedef enum
-{
-    FILE_NOT_FOUND = 1,
-    RUN_NOT_FOUND = 2,
-} FIND_SO_FILE_DOMAIN;
+    PIPE_READ = 400,
+    PIPE_EMPTY = 401,
 
-/* Memory Allocation codes */
-typedef enum
-{
-    MODULE_PARAMETER_LIST = 1,
-    MODULE_PARAMETER = 2,
-} MEMORY_ALLOCATION_DOMAIN;
+    INTERNAL_PID_NOT_FOUND = 500,
+    INTERNAL_SO_NOT_FOUND = 501,
+    INTERNAL_RUN_NOT_FOUND = 502,
+    INTERNAL_PARAM_BOOL_NOT_FOUND = 503,
+    INTERNAL_PARAM_INT_NOT_FOUND = 504,
+    INTERNAL_PARAM_FLOAT_NOT_FOUND = 505,
+    INTERNAL_PARAM_STRING_NOT_FOUND = 506,
+    
+    MODULE_EXIT_CRASH = 600,
+    MODULE_EXIT_NORMAL = 601,
 
-/* Pipeline codes */
-typedef enum
-{
-    GET_PARAMETER_BY_ID = 1,
-} PIPELINE_DOMAIN;
+    MODULE_EXIT_CUSTOM = 700
+} ERROR_CODE;
 
-/* Load Param codes */
-typedef enum
-{
-    LOAD_PARAM_MEMORY_ALLOCATION = 1,
-} LOAD_PARAM_DOMAIN;
+extern uint8_t err_current_pipeline;
+extern uint8_t err_current_module;
 
-
-
-
-
-
-
-/* Data Reception codes */
-typedef enum
-{
-    MSG_QUEUE = 1,
-    SHARED_MEMORY = 2,
-} DATA_RECEPTION_DOMAIN;
-
-/* Msg Queue codes */
-typedef enum
-{
-    GET_MSG_QUEUE = 1,
-    MSG_QUEUE_RECEIVE = 2,
-} MSG_QUEUE_DOMAIN;
-
-/* Shared Memory codes */
-typedef enum
-{
-    SHARED_MEMORY_GET = 1,
-} SHARED_MEMORY_DOMAIN;
+uint32_t get_error_as_uint32(ERROR_CODE code);

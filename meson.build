@@ -20,7 +20,8 @@ sources = files([
 	'src/main.c',
 	'src/serial.c',
 	'src/pipeline/pipeline.c',
-	'src/vmem_config.c',
+	'src/pipeline/error.c',
+	'src/vmem_storage.c',
 	'src/pipeline/module_config.pb-c.c',
 	'src/pipeline/pipeline_config.pb-c.c',
 ])
