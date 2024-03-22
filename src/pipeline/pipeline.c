@@ -119,8 +119,6 @@ void setup_module_config(param_t *param, int index)
     module_parameter_lists[module_id].parameters = malloc(mcon->n_parameters * sizeof(ModuleParameter *));
     if (!module_parameter_lists[module_id].parameters) // Check if malloc failed
     {
-        // Should malloc be freed here?
-        
         set_error_param(MEMORY_MALLOC);
         module_config__free_unpacked(mcon, NULL);
         return;
