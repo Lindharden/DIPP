@@ -211,14 +211,16 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outp
             // Child process exited normally (EXIT_FAILURE)
             if (WEXITSTATUS(status) != 0)
             {
-                uint8_t module_error;
-                size_t res = read(error_pipe[0], &module_error, sizeof(uint8_t));
+                uint16_t module_error;
+                size_t res = read(error_pipe[0], &module_error, sizeof(uint16_t));
                 if (res == FAILURE)
                     set_error_param(PIPE_READ);
                 else if (res == 0)
                     set_error_param(MODULE_EXIT_NORMAL);    
-                else
+                else if (module_error < 100)
                     set_error_param(MODULE_EXIT_CUSTOM + module_error);
+                else
+                    set_error_param(module_error);
             
                 fprintf(stderr, "Child process exited with non-zero status\n");
                 return FAILURE;

@@ -64,3 +64,39 @@ To activate the pipeline, utilize the `pipeline_run` parameter on the CSP node t
 | 2                        | _PROCESS_ALL_                  | Process all image batches in message queue.                                                             |
 | 3                        | _PROCESS_WAIT_ONE_             | Wait for image batch to arrive in message queue. Then process one image batch.                          |
 | 4                        | _PROCESS_WAIT_ALL_             | Wait for image batches to arrive in message queue. Then continously process all arriving image batches. |
+
+
+## Error signaling
+DIPP includes an integer parameter indicating the most recent cause of failure. The most resent error code can be accessed through the CSP parameter named `log_status`. The possible error codes, and their meaning, can be seen in the table below.
+
+| Error Code | Description                                            |
+|------------|--------------------------------------------------------|
+| 100        | Memory Error: Malloc                                   |
+| 101        | Memory Error: Realloc                                  |
+| 102        | Memory Error: Free                                     |
+| 200        | Message Queue Error: Not Found                         |
+| 201        | Message Queue Error: Empty                             |
+| 300        | Shared Memory Error: Not Found                         |
+| 301        | Shared Memory Error: Detach                            |
+| 302        | Shared Memory Error: Remove                            |
+| 303        | Shared Memory Error: Attach                            |
+| 400        | Pipe Error: Read                                       |
+| 401        | Pipe Error: Empty                                      |
+| 500        | Internal Error: PID Not Found                          |
+| 501        | Internal Error: Shared Object Not Found                |
+| 502        | Internal Error: Run Not Found                          |
+| 503        | Internal Error: Boolean Parameter Not Found            |
+| 504        | Internal Error: Integer Parameter Not Found            |
+| 505        | Internal Error: Float Parameter Not Found              |
+| 506        | Internal Error: String Parameter Not Found             |
+| 600        | Module Exit Error: Crash                               |
+| 601        | Module Exit Error: Normal                              |
+| 700-799    | Module Exit Error: Custom error code defined by module |
+
+All error codes are suffixed with ID of the pipeline (1 digit ranging from 1-9) and index of the module (2 digits ranging from 1-99) if applicable. Error codes suffixed with 0's indicate failure happening outside of a module.
+
+### Error code examples
+- _**708104**_: Module with index 4 in pipeline 1 failed with code 8.
+- _**600212**_: Module with index 12 in pipeline 2 crashed.
+- _**300205**_: Could not get Shared Memory in module 5 in pipeline 2.
+- _**501000**_: Could not find SO file with name 'module' during preload.
