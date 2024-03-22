@@ -1,6 +1,4 @@
-#include <stdlib.h>
 #include <dlfcn.h>
-#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <param/param.h>
@@ -11,10 +9,17 @@
 #include <sys/msg.h>
 #include <sys/shm.h>
 #include "pipeline.h"
+#include "error.h"
 #include "module_config.pb-c.h"
 #include "pipeline_config.pb-c.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+
+void set_error_param(ERROR_CODE error_code)
+{
+    uint32_t error_value = get_error_as_uint32(error_code);
+    param_set_uint32(&log_status, error_value);
+}
 
 size_t get_param_buffer(uint8_t **out, param_t *param)
 {
@@ -27,6 +32,7 @@ size_t get_param_buffer(uint8_t **out, param_t *param)
     *out = malloc(buf_size * sizeof(uint8_t));
     if (!*out)
     {
+        set_error_param(MEMORY_MALLOC);
         return 0;
     }
 
@@ -49,6 +55,7 @@ void *load_module(char *moduleName)
     void *handle = dlopen(filename, RTLD_LAZY);
     if (handle == NULL)
     {
+        set_error_param(INTERNAL_SO_NOT_FOUND);
         fprintf(stderr, "Error: Unable to load the library %s.\n", filename);
         return NULL;
     }
@@ -57,6 +64,7 @@ void *load_module(char *moduleName)
     void *functionPointer = dlsym(handle, "run");
     if (functionPointer == NULL)
     {
+        set_error_param(INTERNAL_RUN_NOT_FOUND);
         fprintf(stderr, "Error: Unable to find the run function in %s.\n", filename);
         dlclose(handle);
         return NULL;
@@ -71,7 +79,6 @@ void setup_pipeline(param_t *param, int index)
     size_t buf_size = get_param_buffer(&buffer, param);
 
     PipelineDefinition *pdef = pipeline_definition__unpack(NULL, buf_size, buffer);
-
     free(buffer);
     buffer = NULL;
 
@@ -99,9 +106,8 @@ void setup_module_config(param_t *param, int index)
     size_t buf_size = get_param_buffer(&buffer, param);
 
     ModuleConfig *mcon = module_config__unpack(NULL, buf_size, buffer);
-
     free(buffer);
-    buffer = NULL;
+    buffer = NULL; 
 
     if (!mcon)
     {
@@ -111,28 +117,54 @@ void setup_module_config(param_t *param, int index)
     int module_id = param->id - MODULE_PARAMID_OFFSET; // Minus 30 cause IDs are offset by 30 to accommodate pipeline ids (see pipeline.h)
     module_parameter_lists[module_id].n_parameters = mcon->n_parameters;
     module_parameter_lists[module_id].parameters = malloc(mcon->n_parameters * sizeof(ModuleParameter *));
+    if (!module_parameter_lists[module_id].parameters) // Check if malloc failed
+    {
+        set_error_param(MEMORY_MALLOC);
+        module_config__free_unpacked(mcon, NULL);
+        return;
+    }
+
     for (size_t i = 0; i < mcon->n_parameters; i++)
     {
         module_parameter_lists[module_id].parameters[i] = malloc(sizeof(ModuleParameter));
+
+        if (!module_parameter_lists[module_id].parameters[i]) // Check if malloc failed
+        {   
+            set_error_param(MEMORY_MALLOC);
+            // Cleanup previously allocated memory for parameters
+            for (size_t j = 0; j < i; j++)
+            {
+                if (module_parameter_lists[module_id].parameters[j]->value_case == STRING_VALUE)
+                {
+                    free(module_parameter_lists[module_id].parameters[j]->string_value);
+                }
+                free(module_parameter_lists[module_id].parameters[j]);
+            }
+            free(module_parameter_lists[module_id].parameters);
+
+            module_config__free_unpacked(mcon, NULL); // Assume there's a way to free mcon
+            return;
+        }
+
         module_parameter_lists[module_id].parameters[i]->key = mcon->parameters[i]->key;
         module_parameter_lists[module_id].parameters[i]->value_case = mcon->parameters[i]->value_case;
 
         switch (mcon->parameters[i]->value_case)
         {
-        case CONFIG_PARAMETER__VALUE_BOOL_VALUE:
-            module_parameter_lists[module_id].parameters[i]->bool_value = mcon->parameters[i]->bool_value;
-            break;
-        case CONFIG_PARAMETER__VALUE_INT_VALUE:
-            module_parameter_lists[module_id].parameters[i]->int_value = mcon->parameters[i]->int_value;
-            break;
-        case CONFIG_PARAMETER__VALUE_FLOAT_VALUE:
-            module_parameter_lists[module_id].parameters[i]->float_value = mcon->parameters[i]->float_value;
-            break;
-        case CONFIG_PARAMETER__VALUE_STRING_VALUE:
-            module_parameter_lists[module_id].parameters[i]->string_value = mcon->parameters[i]->string_value;
-            break;
-        default:
-            break;
+            case CONFIG_PARAMETER__VALUE_BOOL_VALUE:
+                module_parameter_lists[module_id].parameters[i]->bool_value = mcon->parameters[i]->bool_value;
+                break;
+            case CONFIG_PARAMETER__VALUE_INT_VALUE:
+                module_parameter_lists[module_id].parameters[i]->int_value = mcon->parameters[i]->int_value;
+                break;
+            case CONFIG_PARAMETER__VALUE_FLOAT_VALUE:
+                module_parameter_lists[module_id].parameters[i]->float_value = mcon->parameters[i]->float_value;
+                break;
+            case CONFIG_PARAMETER__VALUE_STRING_VALUE:
+                module_parameter_lists[module_id].parameters[i]->string_value = mcon->parameters[i]->string_value;
+                break;
+            default:
+                break;
         }
     }
 }
@@ -153,7 +185,7 @@ void setup_all_module_configs()
     }
 }
 
-int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outputPipe, ModuleParameterList *config)
+int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *output_pipe, int *error_pipe, ModuleParameterList *config)
 {
     // Create a new process
     pid_t pid = fork();
@@ -161,9 +193,9 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outp
     if (pid == 0)
     {
         // Child process: Execute the module function
-        ImageBatch result = func(input, config);
+        ImageBatch result = func(input, config, error_pipe);
         size_t data_size = sizeof(result);
-        write(outputPipe[1], &result, data_size); // Write the result to the pipe
+        write(output_pipe[1], &result, data_size); // Write the result to the pipe
         exit(EXIT_SUCCESS);
     }
     else
@@ -174,16 +206,28 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outp
 
         if (WIFEXITED(status))
         {
-            // Child process exited normally
+            // Child process exited normally (EXIT_FAILURE)
             if (WEXITSTATUS(status) != 0)
             {
+                uint16_t module_error;
+                size_t res = read(error_pipe[0], &module_error, sizeof(uint16_t));
+                if (res == FAILURE)
+                    set_error_param(PIPE_READ);
+                else if (res == 0)
+                    set_error_param(MODULE_EXIT_NORMAL);    
+                else if (module_error < 100)
+                    set_error_param(MODULE_EXIT_CUSTOM + module_error);
+                else
+                    set_error_param(module_error);
+            
                 fprintf(stderr, "Child process exited with non-zero status\n");
                 return FAILURE;
             }
         }
         else
         {
-            // Child process did not exit normally
+            // Child process did not exit normally (CRASH)
+            set_error_param(MODULE_EXIT_CRASH);
             fprintf(stderr, "Child process did not exit normally\n");
             return FAILURE;
         }
@@ -194,25 +238,40 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outp
 
 int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
 {
-    int outputPipe[2]; // Pipe for inter-process communication
-    pipe(outputPipe);
+    int output_pipe[2]; // Pipe for inter-process result communication
+    int error_pipe[2]; // Pipe for inter-process error communication
+    pipe(output_pipe);
+    pipe(error_pipe);
 
     for (size_t i = 0; i < pipeline->num_modules; ++i)
     {
+        err_current_module = i + 1;
         ProcessFunction module_function = pipeline->modules[i].module_function;
         ModuleParameterList *module_config = &module_parameter_lists[pipeline->modules[i].module_param_id];
 
-        int module_status = execute_module_in_process(module_function, data, outputPipe, module_config);
+        int module_status = execute_module_in_process(module_function, data, output_pipe, error_pipe, module_config);
 
         if (module_status == FAILURE)
         {
-            close(outputPipe[0]); // Close the read end of the pipe
-            close(outputPipe[1]); // Close the write end of the pipe
-            return i + 1;
+            /* Close all active pipes */
+            close(output_pipe[0]); // Close the read end of the pipe
+            close(output_pipe[1]); // Close the write end of the pipe
+            close(error_pipe[0]);
+            close(error_pipe[1]);
+            return FAILURE;
         }
 
         ImageBatch result;
-        read(outputPipe[0], &result, sizeof(result)); // Read the result from the pipe
+        int res = read(output_pipe[0], &result, sizeof(result)); // Read the result from the pipe
+        if (res == FAILURE)
+        {
+            set_error_param(PIPE_READ);
+            return FAILURE;
+        }
+        if (res == 0) {
+            set_error_param(PIPE_EMPTY);
+            return FAILURE;
+        }
         data->width = result.width;
         data->height = result.height;
         data->channels = result.channels;
@@ -222,11 +281,19 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
             int shmid;
             if ((shmid = shmget(result.shm_key, 0, 0)) == -1)
             {
+                set_error_param(SHM_NOT_FOUND);
                 perror("Could not get shared memory");
             }
 
             // Attach to shared memory from id
             void *shmaddr = shmat(shmid, NULL, 0);
+
+            if (shmaddr == (void *)-1) 
+            {
+                set_error_param(SHM_ATTACH);
+                perror("Could not attach to shared memory");
+            }
+            
             data->data = shmaddr;
         }
         else
@@ -239,8 +306,10 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
         data->pipeline_id = result.pipeline_id;
     }
 
-    close(outputPipe[0]); // Close the read end of the pipe
-    close(outputPipe[1]); // Close the write end of the pipe
+    close(output_pipe[0]); // Close the read end of the pipe
+    close(output_pipe[1]); // Close the write end of the pipe
+    close(error_pipe[0]);
+    close(error_pipe[1]);
 
     return SUCCESS;
 }
@@ -284,43 +353,59 @@ int get_pipeline_by_id(int pipeline_id, Pipeline **pipeline)
             return SUCCESS;
         }
     }
+    set_error_param(INTERNAL_PID_NOT_FOUND);
     return FAILURE;
+}
+
+int load_pipeline_and_execute(ImageBatch *input_batch)
+{
+    // Execute the pipeline with parameter values
+    Pipeline *pipeline;
+    if (get_pipeline_by_id(input_batch->pipeline_id, &pipeline) == FAILURE)
+        return FAILURE;
+
+    err_current_pipeline = pipeline->pipeline_id;
+
+    return execute_pipeline(pipeline, input_batch);
 }
 
 void process(ImageBatch *input_batch)
 {
     // Recieve shared memory id from recieved data
     int shmid;
-    if ((shmid = shmget(input_batch->shm_key, 0, 0)) == -1)
+    if ((shmid = shmget(input_batch->shm_key, 0, 0)) == FAILURE)
     {
-        perror("Could not get shared memory");
+        set_error_param(SHM_NOT_FOUND);
+        return;
     }
 
     // Attach to shared memory from id
     void *shmaddr = shmat(shmid, NULL, 0);
-    input_batch->data = shmaddr; // retrieve correct address in shared memory
 
-    // Execute the pipeline with parameter values
-    Pipeline *pipeline;
-    if (get_pipeline_by_id(input_batch->pipeline_id, &pipeline) == FAILURE)
+    if (shmaddr == (void *)-1)
     {
-        fprintf(stderr, "Pipeline with id '%d' does not exist.\n", input_batch->pipeline_id);
-    }
-
-    int status = execute_pipeline(pipeline, input_batch);
-
-    if (status != SUCCESS)
-    {
-        // Print failure message
-        printf("Module named '%s' caused a failure in the pipeline\n", pipeline->modules[status - 1].module_name);
+        set_error_param(SHM_ATTACH);
         return;
     }
 
-    save_images("output", input_batch);
+    input_batch->data = shmaddr; // retrieve correct address in shared memory
+
+    if (load_pipeline_and_execute(input_batch) == SUCCESS)
+        save_images("output", input_batch);
+    
+    // Reset err values
+    err_current_pipeline = 0;
+    err_current_module = 0;
 
     // Detach and free shared memory
-    shmdt(shmaddr);
-    shmctl(shmid, IPC_RMID, NULL);
+    if (shmdt(shmaddr) == -1)
+    {
+        set_error_param(SHM_DETACH);
+    }
+    if (shmctl(shmid, IPC_RMID, NULL) == -1)
+    {
+        set_error_param(SHM_REMOVE);
+    }
 }
 
 void setup_cache_if_needed()
@@ -339,13 +424,13 @@ int get_message_from_queue(ImageBatch *datarcv, int do_wait)
     int msg_queue_id;
     if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0)) == -1)
     {
-        perror("Could not get MSG queue");
+        set_error_param(MSGQ_NOT_FOUND);
         return FAILURE;
     }
 
     if (msgrcv(msg_queue_id, datarcv, sizeof(ImageBatch) - sizeof(long), 1, do_wait ? 0 : IPC_NOWAIT) == -1)
     {
-        perror("Message queue");
+        set_error_param(MSGQ_EMPTY);
         return FAILURE;
     }
 
@@ -356,11 +441,11 @@ int get_message_from_queue(ImageBatch *datarcv, int do_wait)
 void process_one(int do_wait)
 {
     setup_cache_if_needed();
+
     ImageBatch datarcv;
     if (get_message_from_queue(&datarcv, do_wait) == FAILURE)
-    {
         return;
-    }
+
     process(&datarcv);
 }
 
@@ -368,6 +453,7 @@ void process_one(int do_wait)
 void process_all(int do_wait)
 {
     setup_cache_if_needed();
+
     ImageBatch datarcv;
     while (get_message_from_queue(&datarcv, do_wait) == SUCCESS)
     {
