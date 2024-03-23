@@ -1,5 +1,8 @@
 #include "dipp_error.h"
 
+/* Define error log parameters */
+PARAM_DEFINE_STATIC_VMEM(PARAMID_ERROR_LOG, log_status, PARAM_TYPE_UINT32, -1, 0, PM_CONF, NULL, NULL, storage, VMEM_ERROR_CODE, "Latest error code");
+
 uint8_t err_current_pipeline = 0;
 uint8_t err_current_module = 0;
 

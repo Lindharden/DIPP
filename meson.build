@@ -27,6 +27,8 @@ sources = files([
 	'src/pipeline_config.pb-c.c',
 ])
 
+dirs = include_directories('src/include')
+
 csp_dep = dependency('csp', fallback: ['csp', 'csp_dep'])
 param_dep = dependency('param', fallback: ['param', 'param_dep'])
 proto_c_dep = dependency('libprotobuf-c', fallback: ['protobuf-c', 'proto_c_dep'])
@@ -36,7 +38,7 @@ deps = [csp_dep,param_dep,proto_c_dep,m_dep]
 c_args = '-DHOSTNAME="@0@"'.format(get_option('hostname'))
 
 dipp = executable('dipp', sources,
-	include_directories : ['src/include'],
+	include_directories : dirs,
 	dependencies : deps,
 	install : true,
 	c_args : c_args,
