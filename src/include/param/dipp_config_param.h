@@ -1,3 +1,6 @@
+#ifndef DIPP_CONFIG_PARAM_H
+#define DIPP_CONFIG_PARAM_H
+
 #include <param/param.h>
 #include "dipp_paramids.h"
 #include "vmem_storage.h"
@@ -47,3 +50,5 @@ param_t *pipeline_config_params[] = {
     &pipeline_config_1, &pipeline_config_2, &pipeline_config_3, 
     &pipeline_config_4, &pipeline_config_5, &pipeline_config_6
 };
+
+#endif

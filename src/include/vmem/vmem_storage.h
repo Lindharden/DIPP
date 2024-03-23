@@ -1,4 +1,6 @@
-#pragma once
+#ifndef DIPP_STORAGE_H
+#define DIPP_STORAGE_H
+
 #include <vmem/vmem.h>
 extern vmem_t vmem_storage;
 
@@ -31,3 +33,5 @@ extern vmem_t vmem_storage;
 #define VMEM_CONF_MODULE_20 0x125C  // 188 bytes apart from previous address
 
 #define VMEM_ERROR_CODE 0x1318
+
+#endif
