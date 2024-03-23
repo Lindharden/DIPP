@@ -1,3 +1,6 @@
+#ifndef DIPP_PARAMIDS_H
+#define DIPP_PARAMIDS_H
+
 #define PARAMID_PIPELINE_RUN 1
 
 /* Error log parameters */
@@ -32,3 +35,5 @@
 #define PARAMID_MODULE_PARAM_18 47
 #define PARAMID_MODULE_PARAM_19 48
 #define PARAMID_MODULE_PARAM_20 49
+
+#endif
