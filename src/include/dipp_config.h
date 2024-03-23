@@ -54,8 +54,8 @@ typedef struct ModuleParameterList
 } ModuleParameterList;
 
 /* Stashed pipelines and module parameters */
-extern Pipeline pipelines[MAX_PIPELINES];
-extern ModuleParameterList module_parameter_lists[MAX_MODULES];
+extern Pipeline pipelines[];
+extern ModuleParameterList module_parameter_lists[];
 
 /* Preload all configurations if not done yet */
 void setup_cache_if_needed();
