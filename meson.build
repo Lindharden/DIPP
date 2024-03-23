@@ -19,9 +19,9 @@ project('pipeline', 'c',subproject_dir: 'lib',default_options: [
 sources = files([
 	'src/main.c',
 	'src/serial.c',
-	'src/dipp_main.c',
+	'src/dipp_process.c',
 	'src/dipp_error.c',
-	'src/dipp_configs.c',
+	'src/dipp_config.c',
 	'src/vmem_storage.c',
 	'src/module_config.pb-c.c',
 	'src/pipeline_config.pb-c.c',

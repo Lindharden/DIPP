@@ -1,6 +1,5 @@
-#include "dipp_main.h"
-#include "dipp_error.h"
-#include "dipp_configs.h"
+#include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -9,8 +8,41 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/shm.h>
+#include <param/param.h>
+#include "dipp_error.h"
+#include "dipp_config.h"
+#include "dipp_paramids.h"
+#include "vmem_storage.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+
+#define MSG_QUEUE_KEY 71
+
+// Return codes
+#define SUCCESS 0
+#define FAILURE -1
+
+// Pipeline run codes
+typedef enum PIPELINE_PROCESS
+{
+    PROCESS_STOP = 0,
+    PROCESS_ONE = 1,
+    PROCESS_ALL = 2,
+    PROCESS_WAIT_ONE = 3,
+    PROCESS_WAIT_ALL = 4
+} PIPELINE_PROCESS;
+
+typedef struct ImageBatch {
+    long mtype;          /* message type to read from the message queue */
+    int height;          /* height of images */
+    int width;           /* width of images */
+    int channels;        /* channels of images */
+    int num_images;      /* amount of images */
+    int batch_size;      /* size of the image batch */
+    int shm_key;         /* key to shared memory segment of image data */
+    int pipeline_id;     /* id of pipeline to utilize for processing */
+    unsigned char *data; /* address to image data (in shared memory) */
+} ImageBatch;
 
 typedef ImageBatch (*ProcessFunction)(ImageBatch *, ModuleParameterList *, int *);
 
@@ -261,10 +293,8 @@ void process_one(int do_wait)
     setup_cache_if_needed();
 
     ImageBatch datarcv;
-    if (get_message_from_queue(&datarcv, do_wait) == FAILURE)
-        return;
-
-    process(&datarcv);
+    if (get_message_from_queue(&datarcv, do_wait) == SUCCESS)
+        process(&datarcv);
 }
 
 /* Process all image batches in the message queue*/
@@ -274,9 +304,7 @@ void process_all(int do_wait)
 
     ImageBatch datarcv;
     while (get_message_from_queue(&datarcv, do_wait) == SUCCESS)
-    {
         process(&datarcv);
-    }
 }
 
 void callback_run(param_t *param, int index)
@@ -300,5 +328,10 @@ void callback_run(param_t *param, int index)
     }
 
     // Turn off pipeline when finished
-    param_set_uint8(&pipeline_run, 0);
+    param_set_uint8(param, 0);
 }
+
+/* Define a pipeline_run parameter */
+static uint8_t _pipeline_run = 0;
+void callback_run(param_t *param, int index);
+PARAM_DEFINE_STATIC_RAM(PARAMID_PIPELINE_RUN, pipeline_run, PARAM_TYPE_UINT8, -1, 0, PM_CONF, callback_run, NULL, &_pipeline_run, "Set the pipeline to execute the file");

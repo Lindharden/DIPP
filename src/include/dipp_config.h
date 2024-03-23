@@ -1,9 +1,6 @@
 #ifndef DIPP_CONFIGS_H
 #define DIPP_CONFIGS_H
 
-#include "dipp_paramids.h"
-#include "vmem_storage.h"
-#include <param/param.h>
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -62,8 +59,5 @@ extern ModuleParameterList module_parameter_lists[MAX_MODULES];
 
 /* Preload all configurations if not done yet */
 void setup_cache_if_needed();
-
-void setup_pipeline(param_t *param, int index);
-void setup_module_config(param_t *param, int index);
 
 #endif

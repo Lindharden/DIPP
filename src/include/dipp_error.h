@@ -1,9 +1,6 @@
 #ifndef DIPP_ERROR_H
 #define DIPP_ERROR_H
 
-#include "dipp_paramids.h"
-#include "vmem_storage.h"
-#include <param/param.h>
 #include <stdlib.h>
 #include <stdint.h>
 
