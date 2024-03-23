@@ -23,11 +23,11 @@ sources = files([
 	'src/dipp_error.c',
 	'src/dipp_config.c',
 	'src/vmem_storage.c',
-	'src/module_config.pb-c.c',
-	'src/pipeline_config.pb-c.c',
+	'src/protobuf/module_config.pb-c.c',
+	'src/protobuf/pipeline_config.pb-c.c',
 ])
 
-dirs = include_directories('src/include')
+dirs = include_directories('src/include', 'src/include/protobuf')
 
 csp_dep = dependency('csp', fallback: ['csp', 'csp_dep'])
 param_dep = dependency('param', fallback: ['param', 'param_dep'])
