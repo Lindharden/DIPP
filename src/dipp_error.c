@@ -1,5 +1,6 @@
 #include <param/param.h>
 #include "dipp_error.h"
+#include "dipp_error_param.h"
 #include "dipp_paramids.h"
 #include "vmem_storage.h"
 
@@ -10,9 +11,6 @@ uint32_t get_error_as_uint32(ERROR_CODE code)
 {
     return code * 1000 + err_current_pipeline * 100 + err_current_module;
 }
-
-/* Define error log parameters */
-PARAM_DEFINE_STATIC_VMEM(PARAMID_ERROR_LOG, log_status, PARAM_TYPE_UINT32, -1, 0, PM_CONF, NULL, NULL, storage, VMEM_ERROR_CODE, "Latest error code");
 
 void set_error_param(ERROR_CODE error_code)
 {

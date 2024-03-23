@@ -1,10 +1,8 @@
-#ifndef DIPP_CONFIGS_H
-#define DIPP_CONFIGS_H
+#ifndef DIPP_CONFIG_H
+#define DIPP_CONFIG_H
 
 #include <stdlib.h>
 #include <stdint.h>
-
-#define DATA_PARAM_SIZE 188
 
 #define MAX_MODULES 20
 #define MAX_PIPELINES 6
