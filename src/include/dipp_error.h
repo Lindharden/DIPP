@@ -39,6 +39,10 @@ typedef enum ERROR_CODE
 extern uint8_t err_current_pipeline;
 extern uint8_t err_current_module;
 
+/**
+ * Set the dipp error parameter to the specified error code value
+ * @param error_code Code of the error
+*/
 void set_error_param(ERROR_CODE error_code);
 
 #endif
