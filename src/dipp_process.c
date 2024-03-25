@@ -15,6 +15,7 @@
 #include "dipp_process_param.h"
 #include "dipp_paramids.h"
 #include "vmem_storage.h"
+#include "vmem_upload.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
@@ -224,7 +225,10 @@ void process(ImageBatch *input_batch)
     input_batch->data = shmaddr; // retrieve correct address in shared memory
 
     if (load_pipeline_and_execute(input_batch) == SUCCESS)
+    {
         save_images("output", input_batch);
+        upload(input_batch->data, input_batch->batch_size);
+    }        
     
     // Reset err values
     err_current_pipeline = 0;
