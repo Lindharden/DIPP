@@ -8,11 +8,9 @@
 
 /**
  * Upload data to another node at the specified address.
- * @param node Target node for upload.
- * @param address Virtual address at target node.
  * @param data Image batch data to upload to radio. 
  * @param len Length of data to upload.
 */
-void upload(int node, int address, char *data, int len);
+void upload(char *data, int len);
 
 #endif

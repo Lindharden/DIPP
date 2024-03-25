@@ -13,7 +13,7 @@ void init_radio()
     vmem_radio = vmem_client_find(RADIO_NODE_ID, VMEM_LOCATE_TIMEOUT, 2, VMEM_NAME, sizeof(VMEM_NAME) - 1);
 }
 
-void upload(int node, int address, char *data, int len)
+void upload(char *data, int len)
 {
     /* Fetch radio vmem if not done yet */
     if (vmem_radio.vaddr == 0)
@@ -26,8 +26,8 @@ void upload(int node, int address, char *data, int len)
     uint32_t write_address = vmem_radio.vaddr + _head;
 
     /* Upload image file to CSP node */
-    printf("  Upload %u bytes to node %u addr 0x%x\n", len, node, address);
-    vmem_upload(node, UPLOAD_TIMEOUT, write_address, data, len, 2);
+    printf("  Upload %u bytes to node %u addr 0x%x\n", len, RADIO_NODE_ID, write_address);
+    vmem_upload(RADIO_NODE_ID, UPLOAD_TIMEOUT, write_address, data, len, 2);
 
     /* Update head addres of radio vmem image buffer */
     uint32_t new_head = write_address + len;
