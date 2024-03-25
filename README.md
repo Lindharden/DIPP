@@ -50,7 +50,7 @@ Modules will receive and return image batches of this format.
 ## Camera simulator
 For testing purposes a camera simulating program is included in the `sim` folder. Compile the program with the following command:
 ```
-gcc -o camera camera_control.h -lm
+gcc -o camera camera_control.c -lm
 ```
 Now run it with `./camera <pipeline_id>` (default pipeline_id = 1). To enqueue an image batch, type a positive integer indicating the desired number of images in the batch and hit enter. NB: place a PNG image in the `sim` folder and name it `input.png`.
 
