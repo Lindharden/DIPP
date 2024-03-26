@@ -8,12 +8,12 @@
 
 static vmem_list_t vmem_radio = {0};
 
-// PARAM_DEFINE_REMOTE_DYNAMIC(RADIO_IMAGE_BUFFER_HEAD_ID, vmem_upload_head, RADIO_NODE_ID, PARAM_TYPE_UINT32, -1, 1, PM_CONF, &_head, NULL);
 PARAM_DEFINE_REMOTE(vmem_upload_head, RADIO_NODE_ID, RADIO_IMAGE_BUFFER_HEAD_ID, PARAM_TYPE_UINT32, -1, 0, PM_CONF, &_head, NULL);
 
 void init_radio()
 {
     /* Find address of image buffer vmem on radio */
+    vmem_client_list(RADIO_NODE_ID, VMEM_LOCATE_TIMEOUT, 2);
     vmem_radio = vmem_client_find(RADIO_NODE_ID, VMEM_LOCATE_TIMEOUT, 1, VMEM_NAME, strlen(VMEM_NAME));
 }
 
@@ -25,7 +25,12 @@ void upload(char *data, int len)
 
     /* Get head address of radio vmem image buffer to write image data to */
     if (param_pull_single(&vmem_upload_head, -1, 1, 1, vmem_upload_head.node, UPLOAD_TIMEOUT, 2) < 0)
-        printf("Retrieving parameter value failed\n");     
+    {
+		printf("Retrieving parameter value failed\n");  
+	} else 
+	{
+		printf("Head is %d.\n", _head);
+	}
 
     uint32_t write_address = vmem_radio.vaddr + _head;
 
