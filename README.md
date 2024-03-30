@@ -88,6 +88,10 @@ DIPP includes an integer parameter indicating the most recent cause of failure. 
 | 504        | Internal Error: Integer Parameter Not Found            |
 | 505        | Internal Error: Float Parameter Not Found              |
 | 506        | Internal Error: String Parameter Not Found             |
+| 507        | Internal Error: Failed to pull remote parameter        |
+| 508        | Internal Error: Failed to push remote parameter        |
+| 509        | Internal Error: VMEM Not Found                         |
+| 510        | Internal Error: VMEM Upload Failed                     |
 | 600        | Module Exit Error: Crash                               |
 | 601        | Module Exit Error: Normal                              |
 | 700-799    | Module Exit Error: Custom error code defined by module |
