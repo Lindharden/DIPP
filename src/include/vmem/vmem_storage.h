@@ -4,7 +4,7 @@
 #include <vmem/vmem.h>
 extern vmem_t vmem_storage;
 
-#define VMEM_CONF_PIPELINE_1 0x00   // 188 bytes to next address
+#define VMEM_CONF_PIPELINE_1 0x00
 #define VMEM_CONF_PIPELINE_2 0xBC   // 188 bytes apart from previous address
 #define VMEM_CONF_PIPELINE_3 0x178  // 188 bytes apart from previous address
 #define VMEM_CONF_PIPELINE_4 0x234  // 188 bytes apart from previous address
@@ -32,6 +32,7 @@ extern vmem_t vmem_storage;
 #define VMEM_CONF_MODULE_19 0x11A0  // 188 bytes apart from previous address
 #define VMEM_CONF_MODULE_20 0x125C  // 188 bytes apart from previous address
 
-#define VMEM_ERROR_CODE 0x1318
+#define VMEM_ERROR_CODE 0x1318      // 188 bytes apart from previous address
+#define VMEM_RADIO_NODE_ID 0x131C   // 4 bytes apart from previous address
 
 #endif
