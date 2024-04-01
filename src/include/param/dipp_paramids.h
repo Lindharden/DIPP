@@ -1,4 +1,10 @@
+#ifndef DIPP_PARAMIDS_H
+#define DIPP_PARAMIDS_H
+
 #define PARAMID_PIPELINE_RUN 1
+
+/* Error log parameters */
+#define PARAMID_ERROR_LOG 2
 
 /* Pipeline ids starting at 10 */
 #define PARAMID_PIPELINE_CONFIG_1 10
@@ -29,3 +35,5 @@
 #define PARAMID_MODULE_PARAM_18 47
 #define PARAMID_MODULE_PARAM_19 48
 #define PARAMID_MODULE_PARAM_20 49
+
+#endif

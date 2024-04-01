@@ -10,7 +10,7 @@
 #include <pthread.h>
 #include <vmem/vmem_server.h>
 #include <vmem/vmem_file.h>
-#include "vmem_config.h"
+#include "vmem_storage.h"
 #include <csp/drivers/usart.h>
 #include <csp/drivers/can_socketcan.h>
 
@@ -91,7 +91,7 @@ static void iface_init(int argc, char *argv[])
 	}
 	else if (strcmp(interface, "CAN") == 0)
 	{
-		int error = csp_can_socketcan_open_and_add_interface(can_device, "CAN", 163, 1000000, true, &iface);
+		int error = csp_can_socketcan_open_and_add_interface(can_device, "CAN", pipeline_addr, 100000, true, &iface);
 		if (error != CSP_ERR_NONE)
 		{
 			csp_print("failed to add CAN interface [%s], error: %d\n", can_device, error);
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 	csp_bind_callback(csp_service_handler, CSP_ANY);
 	csp_bind_callback(param_serve, PARAM_PORT_SERVER);
 
-	vmem_file_init(&vmem_config);
+	vmem_file_init(&vmem_storage);
 
 	static pthread_t router_handle;
 	pthread_create(&router_handle, NULL, &router_task, NULL);
