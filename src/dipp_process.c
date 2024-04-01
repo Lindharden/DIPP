@@ -229,15 +229,17 @@ void process(ImageBatch *input_batch)
 
     input_batch->data = shmaddr; // retrieve correct address in shared memory
 
-    if (load_pipeline_and_execute(input_batch) == SUCCESS)
-    {
-        save_images("output", input_batch);
-        upload(input_batch->data, input_batch->batch_size);
-    }
+    int pipeline_result = load_pipeline_and_execute(input_batch);
 
     // Reset err values
     err_current_pipeline = 0;
     err_current_module = 0;
+
+    if (pipeline_result == SUCCESS)
+    {
+        save_images("output", input_batch);
+        upload(input_batch->data, input_batch->batch_size);
+    }
 
     // Detach and free shared memory
     if (shmdt(shmaddr) == -1)
