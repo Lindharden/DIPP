@@ -212,7 +212,7 @@ void process(ImageBatch *input_batch)
     //     return;
     // }
 
-    fprint("Shared memory key %d\n", input_batch->shm_key);
+    printf("Shared memory key %d\n", input_batch->shm_key);
 
     // Attach to shared memory from id
     void *shmaddr = shmat(input_batch->shm_key, NULL, 0);
@@ -237,7 +237,7 @@ void process(ImageBatch *input_batch)
     {
         set_error_param(SHM_DETACH);
     }
-    if (shmctl(shmid, IPC_RMID, NULL) == -1)
+    if (shmctl(input_batch->shm_key, IPC_RMID, NULL) == -1)
     {
         set_error_param(SHM_REMOVE);
     }
