@@ -205,15 +205,17 @@ int load_pipeline_and_execute(ImageBatch *input_batch)
 void process(ImageBatch *input_batch)
 {
     // Recieve shared memory id from recieved data
-    int shmid;
-    if ((shmid = shmget(input_batch->shm_key, 0, 0)) == FAILURE)
-    {
-        set_error_param(SHM_NOT_FOUND);
-        return;
-    }
+    // int shmid;
+    // if ((shmid = shmget(input_batch->shm_key, 0, 0)) == FAILURE)
+    // {
+    //     set_error_param(SHM_NOT_FOUND);
+    //     return;
+    // }
+
+    fprint("Shared memory key %d\n", input_batch->shm_key);
 
     // Attach to shared memory from id
-    void *shmaddr = shmat(shmid, NULL, 0);
+    void *shmaddr = shmat(input_batch->shm_key, NULL, 0);
 
     if (shmaddr == (void *)-1)
     {
