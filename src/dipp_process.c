@@ -252,7 +252,7 @@ int get_message_from_queue(ImageBatch *datarcv, int do_wait)
         return FAILURE;
     }
 
-    if (msgrcv(msg_queue_id, datarcv, sizeof(ImageBatch) - sizeof(long), 1, do_wait ? 0 : IPC_NOWAIT) == -1)
+    if (msgrcv(msg_queue_id, datarcv, sizeof(ImageBatch), 1, do_wait ? 0 : IPC_NOWAIT) == -1)
     {
         set_error_param(MSGQ_EMPTY);
         return FAILURE;
