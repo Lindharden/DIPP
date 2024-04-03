@@ -91,7 +91,7 @@ static void iface_init(int argc, char *argv[])
 	}
 	else if (strcmp(interface, "CAN") == 0)
 	{
-		int error = csp_can_socketcan_open_and_add_interface(can_device, "CAN", pipeline_addr, 100000, true, &iface);
+		int error = csp_can_socketcan_open_and_add_interface(can_device, "CAN", pipeline_addr, 1000000, 0, &iface);
 		if (error != CSP_ERR_NONE)
 		{
 			csp_print("failed to add CAN interface [%s], error: %d\n", can_device, error);
