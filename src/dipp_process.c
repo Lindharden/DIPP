@@ -149,12 +149,12 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
 
 void save_images(const char *filename_base, const ImageBatch *batch)
 {
-    size_t offset = 0;
+    uint32_t offset = 0;
     int image_index = 0;
     
     while (image_index < batch->num_images && offset < batch->batch_size) {
-        size_t image_size = *((size_t *)(batch->data + offset));
-        offset += sizeof(size_t); // Move the offset to the start of the image data
+        uint32_t image_size = *((uint32_t *)(batch->data + offset));
+        offset += sizeof(uint32_t); // Move the offset to the start of the image data
 
         char filename[20];
         sprintf(filename, "%s%d.png", filename_base, image_index);
@@ -205,17 +205,15 @@ int load_pipeline_and_execute(ImageBatch *input_batch)
 void process(ImageBatch *input_batch)
 {
     // Recieve shared memory id from recieved data
-    // int shmid;
-    // if ((shmid = shmget(input_batch->shm_key, 0, 0)) == FAILURE)
-    // {
-    //     set_error_param(SHM_NOT_FOUND);
-    //     return;
-    // }
-
-    printf("Shared memory key %d\n", input_batch->shm_key);
+    int shmid;
+    if ((shmid = shmget(input_batch->shm_key, 0, 0)) == FAILURE)
+    {
+        set_error_param(SHM_NOT_FOUND);
+        return;
+    }
 
     // Attach to shared memory from id
-    void *shmaddr = shmat(input_batch->shm_key, NULL, 0);
+    void *shmaddr = shmat(shmid, NULL, 0);
 
     if (shmaddr == (void *)-1)
     {
@@ -237,7 +235,7 @@ void process(ImageBatch *input_batch)
     {
         set_error_param(SHM_DETACH);
     }
-    if (shmctl(input_batch->shm_key, IPC_RMID, NULL) == -1)
+    if (shmctl(shmid, IPC_RMID, NULL) == -1)
     {
         set_error_param(SHM_REMOVE);
     }
