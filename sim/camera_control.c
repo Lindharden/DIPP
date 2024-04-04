@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
         data.shm_key = i += 20; // testing key
         data.pipeline_id = pipeline_id;
         size_t image_size = image_height * image_width * image_channels;
-        size_t batch_size = (image_size + sizeof(size_t)) * data.num_images;
+        size_t batch_size = (image_size + sizeof(uint32_t)) * data.num_images;
         int shmid = shmget(data.shm_key, batch_size, IPC_CREAT | 0666);
         char *shmaddr = shmat(shmid, NULL, 0);
         data.batch_size = batch_size;
@@ -47,8 +47,8 @@ int main(int argc, char *argv[])
         for (size_t i = 0; i < data.num_images; i++)
         {
             // Insert image size before image data
-            memcpy(shmaddr + offset, &image_size, sizeof(size_t));
-            offset += sizeof(size_t);
+            memcpy(shmaddr + offset, &image_size, sizeof(uint32_t));
+            offset += sizeof(uint32_t);
             memcpy(shmaddr + offset, image_data, image_size);
             offset += image_size;
         }
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
         }
 
         // send msg to queue
-        if (msgsnd(msg_queue_id, &data, sizeof(data) - sizeof(long), 0) == -1)
+        if (msgsnd(msg_queue_id, &data, sizeof(data), 0) == -1)
         {
             perror("msgsnd error");
         }

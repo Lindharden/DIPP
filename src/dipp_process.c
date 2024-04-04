@@ -149,12 +149,12 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
 
 void save_images(const char *filename_base, const ImageBatch *batch)
 {
-    size_t offset = 0;
+    uint32_t offset = 0;
     int image_index = 0;
     
     while (image_index < batch->num_images && offset < batch->batch_size) {
-        size_t image_size = *((size_t *)(batch->data + offset));
-        offset += sizeof(size_t); // Move the offset to the start of the image data
+        uint32_t image_size = *((uint32_t *)(batch->data + offset));
+        offset += sizeof(uint32_t); // Move the offset to the start of the image data
 
         char filename[20];
         sprintf(filename, "%s%d.png", filename_base, image_index);
@@ -250,7 +250,7 @@ int get_message_from_queue(ImageBatch *datarcv, int do_wait)
         return FAILURE;
     }
 
-    if (msgrcv(msg_queue_id, datarcv, sizeof(ImageBatch) - sizeof(long), 1, do_wait ? 0 : IPC_NOWAIT) == -1)
+    if (msgrcv(msg_queue_id, datarcv, sizeof(ImageBatch), 1, do_wait ? 0 : IPC_NOWAIT) == -1)
     {
         set_error_param(MSGQ_EMPTY);
         return FAILURE;
