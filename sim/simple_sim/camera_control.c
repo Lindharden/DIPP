@@ -4,7 +4,7 @@
 #include <sys/shm.h>
 #include "camera_control.h"
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "../stb_image.h"
 
 int main(int argc, char *argv[])
 {
@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
         // Prepare the data
         ImageBatch data;
         data.mtype = 1;
-        const char *filename = "sim_image.png"; 
+        const char *filename = "../sim_image.png"; 
         int image_width, image_height, image_channels;
         unsigned char *image_data = stbi_load(filename, &image_width, &image_height, &image_channels, STBI_rgb_alpha);
         data.height = image_height;
