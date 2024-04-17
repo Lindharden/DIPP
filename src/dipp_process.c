@@ -157,18 +157,22 @@ void save_images(const char *filename_base, const ImageBatch *batch)
         offset += sizeof(uint32_t); // Move the offset to the start of the image data
 
         char filename[20];
-        sprintf(filename, "%s%d.png", filename_base, image_index);
+        sprintf(filename, "%s%d.raw", filename_base, image_index);
 
-        int stride = batch->width * batch->channels * sizeof(uint8_t);
-        int success = stbi_write_png(filename, batch->width, batch->height, batch->channels, batch->data + offset, stride);
-        if (!success)
-        {
-            fprintf(stderr, "Error writing image to %s\n", filename);
+        FILE *filePtr;
+
+        // Open the file in binary mode for writing
+        filePtr = fopen(filename, "wb");
+        if (filePtr == NULL) {
+        fprintf(stderr, "Error opening file.\n");
+        return 1;
         }
-        else
-        {
-            printf("Image saved as %s\n", filename);
-        }
+
+        // Write the byte array to the file
+        fwrite(batch->data + offset, sizeof(unsigned char), image_size, filePtr);
+
+        // Close the file
+        fclose(filePtr);
 
         offset += image_size; // Move the offset to the start of the next image block
 
