@@ -23,8 +23,10 @@ sources = files([
 	'src/dipp_error.c',
 	'src/dipp_config.c',
 	'src/vmem/vmem_storage.c',
+	'src/vmem/vmem_upload.c',
 	'src/protobuf/module_config.pb-c.c',
 	'src/protobuf/pipeline_config.pb-c.c',
+	'src/protobuf/metadata.pb-c.c',
 ])
 
 dirs = include_directories('src/include', 'src/include/protobuf', 'src/include/param', 'src/include/vmem')
