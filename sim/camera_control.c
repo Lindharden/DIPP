@@ -3,8 +3,9 @@
 #include <sys/msg.h>
 #include <sys/shm.h>
 #include "camera_control.h"
+#include "metadata.pb-c.h"
 #define STB_IMAGE_IMPLEMENTATION
-#include "../stb_image.h"
+#include "stb_image.h"
 
 int main(int argc, char *argv[])
 {
@@ -29,17 +30,30 @@ int main(int argc, char *argv[])
         // Prepare the data
         ImageBatch data;
         data.mtype = 1;
-        const char *filename = "../sim_image.png"; 
-        int image_width, image_height, image_channels;
-        unsigned char *image_data = stbi_load(filename, &image_width, &image_height, &image_channels, STBI_rgb_alpha);
-        data.height = image_height;
-        data.width = image_width;
-        data.channels = image_channels;
         data.num_images = atoi(input);
         data.shm_key = i += 20; // testing key
         data.pipeline_id = pipeline_id;
-        size_t image_size = image_height * image_width * image_channels;
-        size_t batch_size = (image_size + sizeof(uint32_t)) * data.num_images;
+
+        const char *filename = "sim_image.png"; 
+        int image_width, image_height, image_channels;
+        unsigned char *image_data = stbi_load(filename, &image_width, &image_height, &image_channels, STBI_rgb_alpha);
+
+        uint32_t image_size = image_height * image_width * image_channels;
+        Metadata new_meta = METADATA__INIT;
+        new_meta.size = image_size;
+        new_meta.width = image_width;
+        new_meta.height = image_height;
+        new_meta.channels = image_channels;
+        new_meta.timestamp = 0; // example time (should be using unix timestamp)
+        new_meta.bits_pixel = 8;
+        new_meta.camera = "rgb";
+
+        size_t meta_size = metadata__get_packed_size(&new_meta);
+        uint8_t meta_buf[meta_size];
+        metadata__pack(&new_meta, meta_buf);
+
+        uint32_t batch_size = (image_size + sizeof(uint32_t) + meta_size) * data.num_images;
+
         int shmid = shmget(data.shm_key, batch_size, IPC_CREAT | 0666);
         char *shmaddr = shmat(shmid, NULL, 0);
         data.batch_size = batch_size;
@@ -47,8 +61,10 @@ int main(int argc, char *argv[])
         for (size_t i = 0; i < data.num_images; i++)
         {
             // Insert image size before image data
-            memcpy(shmaddr + offset, &image_size, sizeof(uint32_t));
+            memcpy(shmaddr + offset, &meta_size, sizeof(uint32_t));
             offset += sizeof(uint32_t);
+            memcpy(shmaddr + offset, &meta_buf, meta_size);
+            offset += meta_size;
             memcpy(shmaddr + offset, image_data, image_size);
             offset += image_size;
         }

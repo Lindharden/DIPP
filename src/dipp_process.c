@@ -161,7 +161,7 @@ void save_images(const char *filename_base, const ImageBatch *batch)
         uint32_t meta_size = *((uint32_t *)(batch->data + offset));
         offset += sizeof(uint32_t); // Move the offset to the start of metadata
         Metadata *metadata = metadata__unpack(NULL, meta_size, batch->data + offset);
-        offset += metadata->size; // Move offset to start of image
+        offset += meta_size; // Move offset to start of image
 
         char filename[20];
         sprintf(filename, "%s%d.png", filename_base, image_index);
@@ -177,7 +177,7 @@ void save_images(const char *filename_base, const ImageBatch *batch)
             printf("Image saved as %s\n", filename);
         }
 
-        offset += meta_size; // Move the offset to the start of the next image block
+        offset += metadata->size; // Move the offset to the start of the next image block
 
         image_index++;
     }
