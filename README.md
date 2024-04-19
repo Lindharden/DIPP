@@ -88,10 +88,15 @@ DIPP includes an integer parameter indicating the most recent cause of failure. 
 | 504        | Internal Error: Integer Parameter Not Found            |
 | 505        | Internal Error: Float Parameter Not Found              |
 | 506        | Internal Error: String Parameter Not Found             |
-| 507        | Internal Error: Failed to pull remote parameter        |
-| 508        | Internal Error: Failed to push remote parameter        |
-| 509        | Internal Error: VMEM Not Found                         |
-| 510        | Internal Error: VMEM Upload Failed                     |
+| 507        | Internal Error: Custom metadata Boolean Not Found      |
+| 508        | Internal Error: Custom metadata Integer Not Found      |
+| 509        | Internal Error: Custom metadata Float Not Found        |
+| 510        | Internal Error: Custom metadata String Not Found       |
+| 511        | Internal Error: Custom metadata Dublicate Key Added    |
+| 512        | Internal Error: Failed to pull remote parameter        |
+| 513        | Internal Error: Failed to push remote parameter        |
+| 514        | Internal Error: VMEM Not Found                         |
+| 515        | Internal Error: VMEM Upload Failed                     |
 | 600        | Module Exit Error: Crash                               |
 | 601        | Module Exit Error: Normal                              |
 | 700-799    | Module Exit Error: Custom error code defined by module |

@@ -18,7 +18,12 @@ void upload(unsigned char *data, int len)
     /* Find image_buffer vmem file on radio */
     if (vmem_radio.vaddr == 0 || radio_id != current_radio_node_id)
     {
-        vmem_radio = vmem_client_find2(radio_id, VMEM_LOCATE_TIMEOUT, 2, VMEM_NAME, 5);
+        if (vmem_client_find(radio_id, VMEM_LOCATE_TIMEOUT, &vmem_radio, 2, VMEM_NAME, 5) < 0)
+        {   
+            // error when locating the vmem file
+            set_error_param(INTERNAL_VMEM_NOT_FOUND);
+            return;
+        }
         // remove old parameter, as the id might have changed
         if (current_radio_node_id)
             param_list_remove(current_radio_node_id, 1);

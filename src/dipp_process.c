@@ -19,6 +19,7 @@
 #include "dipp_paramids.h"
 #include "vmem_storage.h"
 #include "vmem_upload.h"
+#include "metadata.pb-c.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
@@ -110,9 +111,7 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
             set_error_param(PIPE_EMPTY);
             return FAILURE;
         }
-        data->width = result.width;
-        data->height = result.height;
-        data->channels = result.channels;
+
         if (data->shm_key != result.shm_key)
         {
             // Recieve shared memory id from result data
@@ -154,19 +153,21 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
 
 void save_images(const char *filename_base, const ImageBatch *batch)
 {
-    size_t offset = 0;
+    uint32_t offset = 0;
     int image_index = 0;
 
     while (image_index < batch->num_images && offset < batch->batch_size)
     {
-        size_t image_size = *((size_t *)(batch->data + offset));
-        offset += sizeof(size_t); // Move the offset to the start of the image data
+        uint32_t meta_size = *((uint32_t *)(batch->data + offset));
+        offset += sizeof(uint32_t); // Move the offset to the start of metadata
+        Metadata *metadata = metadata__unpack(NULL, meta_size, batch->data + offset);
+        offset += metadata->size; // Move offset to start of image
 
         char filename[20];
         sprintf(filename, "%s%d.png", filename_base, image_index);
 
-        int stride = batch->width * batch->channels * sizeof(uint8_t);
-        int success = stbi_write_png(filename, batch->width, batch->height, batch->channels, batch->data + offset, stride);
+        int stride = metadata->width * metadata->channels * sizeof(uint8_t);
+        int success = stbi_write_png(filename, metadata->width, metadata->height, metadata->channels, batch->data + offset, stride);
         if (!success)
         {
             fprintf(stderr, "Error writing image to %s\n", filename);
@@ -176,7 +177,7 @@ void save_images(const char *filename_base, const ImageBatch *batch)
             printf("Image saved as %s\n", filename);
         }
 
-        offset += image_size; // Move the offset to the start of the next image block
+        offset += meta_size; // Move the offset to the start of the next image block
 
         image_index++;
     }

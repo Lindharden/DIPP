@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+// Custom metadata item as a key-value pair
+message MetadataItem {
+    string key = 1;
+    oneof value {
+        bool bool_value = 2;
+        int32 int_value = 3;
+        float float_value = 4;
+        string string_value = 5;
+    }
+}
+
+// Image metadata definition
+message Metadata {
+    int32 size = 1;
+    int32 height = 2;
+    int32 width = 3;
+    int32 channels = 4;
+    int32 timestamp = 5;
+    int32 bits_pixel = 6;
+    string camera = 7;
+    repeated MetadataItem items = 8;
+}
