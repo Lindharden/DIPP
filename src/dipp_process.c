@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stdatomic.h>
+#include <time.h>
 #include "dipp_error.h"
 #include "dipp_config.h"
 #include "dipp_process.h"
@@ -22,6 +23,8 @@
 #include "metadata.pb-c.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+
+#define BILLION 1000000000L // 1 billion nanoseconds in a second
 
 int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *output_pipe, int *error_pipe, ModuleParameterList *config)
 {
@@ -81,11 +84,11 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
     pipe(output_pipe);
     pipe(error_pipe);
 
-    for (size_t i = 0; i < pipeline->num_modules; ++i)
+    for (size_t i = 0; i < data->pipeline_id; ++i)
     {
         err_current_module = i + 1;
-        ProcessFunction module_function = pipeline->modules[i].module_function;
-        ModuleParameterList *module_config = &module_parameter_lists[pipeline->modules[i].module_param_id];
+        ProcessFunction module_function = pipeline->modules[0].module_function;
+        ModuleParameterList *module_config = &module_parameter_lists[pipeline->modules[0].module_param_id];
 
         int module_status = execute_module_in_process(module_function, data, output_pipe, error_pipe, module_config);
 
@@ -201,7 +204,9 @@ int load_pipeline_and_execute(ImageBatch *input_batch)
 {
     // Execute the pipeline with parameter values
     Pipeline *pipeline;
-    if (get_pipeline_by_id(input_batch->pipeline_id, &pipeline) == FAILURE)
+
+    // Default to 1, as we use pipeline id to indicate amount of modules.
+    if (get_pipeline_by_id(1, &pipeline) == FAILURE)
         return FAILURE;
 
     err_current_pipeline = pipeline->pipeline_id;
@@ -230,7 +235,24 @@ void process(ImageBatch *input_batch)
 
     input_batch->data = shmaddr; // retrieve correct address in shared memory
 
+     // Get the start time
+    struct timespec start_time;
+    if (clock_gettime(CLOCK_MONOTONIC, &start_time) < 0)
+    {
+        perror("clock_gettime");
+        exit(EXIT_FAILURE);
+    }
+
     int pipeline_result = load_pipeline_and_execute(input_batch);
+
+     // Get the end time
+    struct timespec stop_time;
+    if (clock_gettime(CLOCK_MONOTONIC, &stop_time) < 0)
+    {
+        perror("clock_gettime");
+        exit(EXIT_FAILURE);
+    }
+    printf("%d %d %ld\n", input_batch->pipeline_id, input_batch->num_images, BILLION * (stop_time.tv_sec - start_time.tv_sec) + (stop_time.tv_nsec - start_time.tv_nsec));
 
     // Reset err values
     err_current_pipeline = 0;
@@ -238,8 +260,8 @@ void process(ImageBatch *input_batch)
 
     if (pipeline_result == SUCCESS)
     {
-        save_images("output", input_batch);
-        upload(input_batch->data, input_batch->batch_size);
+        // save_images("output", input_batch);
+        // upload(input_batch->data, input_batch->batch_size);
     }
 
     // Detach and free shared memory

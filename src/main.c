@@ -109,7 +109,7 @@ static void iface_init(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-	printf("\nbootmsg\n");
+	// printf("\nbootmsg\n");
 
 	srand(time(NULL));
 
@@ -122,14 +122,14 @@ int main(int argc, char *argv[])
 
 	/* Interfaces */
 	iface_init(argc, argv);
-	csp_print("Connection table\r\n");
-	csp_conn_print_table();
+	// csp_print("Connection table\r\n");
+	// csp_conn_print_table();
 
-	csp_print("Interfaces\r\n");
-	csp_iflist_print();
+	// csp_print("Interfaces\r\n");
+	// csp_iflist_print();
 
-	csp_print("Route table\r\n");
-	csp_rtable_print();
+	// csp_print("Route table\r\n");
+	// csp_rtable_print();
 
 	csp_bind_callback(csp_service_handler, CSP_ANY);
 	csp_bind_callback(param_serve, PARAM_PORT_SERVER);

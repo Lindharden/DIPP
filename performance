@@ -1,0 +1,16 @@
+#!/bin/bash
+
+./builddir/dipp > "dipp_time_experiment.txt" &
+dipp_process=$!
+
+modules=(1 2 4 8 16 32 64 128) # Amount of modules
+sizes=(1 4 16 64 256 512 768) # Image sizes
+reps=${1:-50} # Default to 50 unless provided as argument
+
+for module in "${modules[@]}"; do
+    for size in "${sizes[@]}"; do
+        ./builddir/test_cam $size $reps $module
+    done
+done
+
+kill $dipp_process >/dev/null 2>&1

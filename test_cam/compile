@@ -1,0 +1,2 @@
+#!/bin/sh
+gcc -g -o camera camera_control.c metadata.pb-c.c -lm -lprotobuf-c
