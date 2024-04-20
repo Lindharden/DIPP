@@ -11,6 +11,7 @@
 #include <vmem/vmem_server.h>
 #include <vmem/vmem_file.h>
 #include "vmem_storage.h"
+#include "dipp_run.h"
 #include <csp/drivers/usart.h>
 #include <csp/drivers/can_socketcan.h>
 
@@ -29,6 +30,8 @@ void *router_task(void *param)
 	return NULL;
 }
 
+int p_all = 0;
+
 static void iface_init(int argc, char *argv[])
 {
 	csp_iface_t *iface = NULL;
@@ -39,7 +42,7 @@ static void iface_init(int argc, char *argv[])
 	int pipeline_addr = 162;		  // Default pipeline address
 
 	int opt;
-	while ((opt = getopt(argc, argv, "i:p:a:")) != -1)
+	while ((opt = getopt(argc, argv, "i:p:a:q")) != -1)
 	{
 		switch (opt)
 		{
@@ -56,6 +59,9 @@ static void iface_init(int argc, char *argv[])
 		case 'a':
 			// Use the pipeline address
 			pipeline_addr = atoi(optarg);
+			break;
+		case 'q':
+			p_all = 1;
 			break;
 		default:
 			fprintf(stderr, "Usage: %s [-i <interface>] [-p <port/device>] [-a <pipeline_address<´>]\n", argv[0]);
@@ -142,10 +148,8 @@ int main(int argc, char *argv[])
 	static pthread_t vmem_server_handle;
 	pthread_create(&vmem_server_handle, NULL, &vmem_server_task, NULL);
 
-	while (1)
-	{
-		sleep(10 * 1000); // TODO: Handle kbd interupt
-	}
-
+	if (p_all) process_all(1);
+	else process_one(1);
+	
 	return 0;
 }

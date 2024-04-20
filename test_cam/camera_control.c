@@ -2,6 +2,9 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/shm.h>
+#include <string.h>
+#include <unistd.h>
+#include <time.h>
 #include "camera_control.h"
 #include "metadata.pb-c.h"
 
@@ -55,12 +58,27 @@ int main(int argc, char *argv[])
 
     for (size_t i = 0; i < num_iterations; i++)
     {
+        /* Get timestamp (used as SHM key) */
+        struct timespec tms;
+        if (clock_gettime(CLOCK_MONOTONIC, &tms)) {
+            return -1;
+        }
+        int64_t key = tms.tv_nsec;
+
+        sleep(0.1);
         data.batch_size = batch_size;
-        data.shm_key++;
+        data.shm_key = key;
+
+        /* Retry shmget if it fails to create the shared memory segment */
         int shmid = shmget(data.shm_key, batch_size, IPC_CREAT | 0666);
+        if (shmid == -1) {
+            sleep(1);
+            perror("shmget error");
+        }
+        
         char *shmaddr = shmat(shmid, NULL, 0);
         int offset = 0;
-        for (size_t i = 0; i < data.num_images; i++)
+        for (size_t j = 0; j < data.num_images; j++)
         {
             // Insert image size before image data
             memcpy(shmaddr + offset, &meta_size, sizeof(uint32_t));
@@ -73,14 +91,25 @@ int main(int argc, char *argv[])
 
         // create msg queue
         int msg_queue_id;
-        if ((msg_queue_id = msgget(71, 0666 | IPC_CREAT)) == -1)
+        if ((msg_queue_id = msgget(77, 0666 | IPC_CREAT)) == -1)
         {
             perror("msgget error");
+        }
+
+        /* Wait until quueue is empty before sending the next message */
+        struct msqid_ds queue_info;
+        while (1)
+        {
+            // Retrieve information about the message queue    
+            msgctl(msg_queue_id, IPC_STAT, &queue_info);
+            if (!queue_info.msg_qnum) break;
+            else sleep(1);
         }
 
         // send msg to queue
         if (msgsnd(msg_queue_id, &data, sizeof(data), 0) == -1)
         {
+
             perror("msgsnd error");
         }
     }    

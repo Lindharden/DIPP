@@ -13,6 +13,7 @@
 #include <signal.h>
 #include <stdatomic.h>
 #include <time.h>
+#include "dipp_run.h"
 #include "dipp_error.h"
 #include "dipp_config.h"
 #include "dipp_process.h"
@@ -214,7 +215,7 @@ int load_pipeline_and_execute(ImageBatch *input_batch)
     return execute_pipeline(pipeline, input_batch);
 }
 
-void process(ImageBatch *input_batch)
+void process(ImageBatch *input_batch, int time)
 {
     // Recieve shared memory id from recieved data
     int shmid;
@@ -235,24 +236,34 @@ void process(ImageBatch *input_batch)
 
     input_batch->data = shmaddr; // retrieve correct address in shared memory
 
-     // Get the start time
     struct timespec start_time;
-    if (clock_gettime(CLOCK_MONOTONIC, &start_time) < 0)
+    if (time)
     {
-        perror("clock_gettime");
-        exit(EXIT_FAILURE);
+        // Get the start time
+        if (clock_gettime(CLOCK_MONOTONIC, &start_time) < 0)
+        {
+            perror("clock_gettime");
+            exit(EXIT_FAILURE);
+        }
     }
+    
 
     int pipeline_result = load_pipeline_and_execute(input_batch);
 
-     // Get the end time
-    struct timespec stop_time;
-    if (clock_gettime(CLOCK_MONOTONIC, &stop_time) < 0)
+    if (time)
     {
-        perror("clock_gettime");
-        exit(EXIT_FAILURE);
+        // Get the end time
+        struct timespec stop_time;
+        if (clock_gettime(CLOCK_MONOTONIC, &stop_time) < 0)
+        {
+            perror("clock_gettime");
+            exit(EXIT_FAILURE);
+        }
+
+        long execution_time = BILLION * (stop_time.tv_sec - start_time.tv_sec) + (stop_time.tv_nsec - start_time.tv_nsec);
+        float throughput = (input_batch->num_images * BILLION) / (execution_time / input_batch->pipeline_id); // MB / sec
+        printf("%d %d %ld %.2f\n", input_batch->pipeline_id, input_batch->num_images, execution_time, throughput);
     }
-    printf("%d %d %ld\n", input_batch->pipeline_id, input_batch->num_images, BILLION * (stop_time.tv_sec - start_time.tv_sec) + (stop_time.tv_nsec - start_time.tv_nsec));
 
     // Reset err values
     err_current_pipeline = 0;
@@ -297,10 +308,9 @@ int get_message_from_queue(ImageBatch *datarcv, int do_wait)
 void process_one(int do_wait)
 {
     setup_cache_if_needed();
-
     ImageBatch datarcv;
     if (get_message_from_queue(&datarcv, do_wait) == SUCCESS)
-        process(&datarcv);
+        process(&datarcv, 0);
 }
 
 /* Process all image batches in the message queue*/
@@ -310,7 +320,7 @@ void process_all(int do_wait)
 
     ImageBatch datarcv;
     while (get_message_from_queue(&datarcv, do_wait) == SUCCESS)
-        process(&datarcv);
+        process(&datarcv, 1);
 }
 
 typedef struct ProcessThreadArgs
