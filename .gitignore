@@ -5,7 +5,7 @@
 /.vscode/
 
 # vmem files for persistent parameters
-*.vmem
+# *.vmem
 
 # Compiled files
 /sim/camera
