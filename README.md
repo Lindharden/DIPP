@@ -35,9 +35,6 @@ The pipeline processes batched image data that is stored in shared memory. The p
 ```c
 typedef struct ImageBatch {
     long mtype;          /* message type to read from the message queue */
-    int height;          /* height of images */
-    int width;           /* width of images */
-    int channels;        /* channels of images */
     int num_images;      /* amount of images */
     int batch_size;      /* size of the image batch */
     int shm_key;         /* key to shared memory segment of image data */
@@ -48,11 +45,8 @@ typedef struct ImageBatch {
 Modules will receive and return image batches of this format.
 
 ## Camera simulator
-For testing purposes a camera simulating program is included in the `sim` folder. Compile the program with the following command:
-```
-gcc -o camera camera_control.c -lm
-```
-Now run it with `./camera <pipeline_id>` (default pipeline_id = 1). To enqueue an image batch, type a positive integer indicating the desired number of images in the batch and hit enter. NB: place a PNG image in the `sim` folder and name it `input.png`.
+For testing purposes a camera simulating program is included in the `sim` folder. Compile the program with the `compile` script.
+Now run it with `./camera <pipeline_id>` (default pipeline_id = 1). To enqueue an image batch, type a positive integer indicating the desired number of images in the batch and hit enter. NB: place a PNG image in the `sim` folder and name it `sim_image.png`.
 
 ## Activate the pipeline
 To activate the pipeline, utilize the `pipeline_run` parameter on the CSP node through CSH. Navigate to `node 162` (default port), and download the list of parameters using `list download`. Set the `pipeline_run` parameter to one of the following values:
@@ -88,6 +82,15 @@ DIPP includes an integer parameter indicating the most recent cause of failure. 
 | 504        | Internal Error: Integer Parameter Not Found            |
 | 505        | Internal Error: Float Parameter Not Found              |
 | 506        | Internal Error: String Parameter Not Found             |
+| 507        | Internal Error: Custom metadata Boolean Not Found      |
+| 508        | Internal Error: Custom metadata Integer Not Found      |
+| 509        | Internal Error: Custom metadata Float Not Found        |
+| 510        | Internal Error: Custom metadata String Not Found       |
+| 511        | Internal Error: Custom metadata Dublicate Key Added    |
+| 512        | Internal Error: Failed to pull remote parameter        |
+| 513        | Internal Error: Failed to push remote parameter        |
+| 514        | Internal Error: VMEM Not Found                         |
+| 515        | Internal Error: VMEM Upload Failed                     |
 | 600        | Module Exit Error: Crash                               |
 | 601        | Module Exit Error: Normal                              |
 | 700-799    | Module Exit Error: Custom error code defined by module |

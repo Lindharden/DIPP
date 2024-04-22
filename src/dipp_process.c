@@ -9,12 +9,17 @@
 #include <sys/msg.h>
 #include <sys/shm.h>
 #include <param/param.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdatomic.h>
 #include "dipp_error.h"
 #include "dipp_config.h"
 #include "dipp_process.h"
 #include "dipp_process_param.h"
 #include "dipp_paramids.h"
 #include "vmem_storage.h"
+#include "vmem_upload.h"
+#include "metadata.pb-c.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
@@ -47,12 +52,12 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outp
                 if (res == FAILURE)
                     set_error_param(PIPE_READ);
                 else if (res == 0)
-                    set_error_param(MODULE_EXIT_NORMAL);    
+                    set_error_param(MODULE_EXIT_NORMAL);
                 else if (module_error < 100)
                     set_error_param(MODULE_EXIT_CUSTOM + module_error);
                 else
                     set_error_param(module_error);
-            
+
                 fprintf(stderr, "Child process exited with non-zero status\n");
                 return FAILURE;
             }
@@ -72,7 +77,7 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outp
 int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
 {
     int output_pipe[2]; // Pipe for inter-process result communication
-    int error_pipe[2]; // Pipe for inter-process error communication
+    int error_pipe[2];  // Pipe for inter-process error communication
     pipe(output_pipe);
     pipe(error_pipe);
 
@@ -101,13 +106,12 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
             set_error_param(PIPE_READ);
             return FAILURE;
         }
-        if (res == 0) {
+        if (res == 0)
+        {
             set_error_param(PIPE_EMPTY);
             return FAILURE;
         }
-        data->width = result.width;
-        data->height = result.height;
-        data->channels = result.channels;
+
         if (data->shm_key != result.shm_key)
         {
             // Recieve shared memory id from result data
@@ -121,12 +125,12 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
             // Attach to shared memory from id
             void *shmaddr = shmat(shmid, NULL, 0);
 
-            if (shmaddr == (void *)-1) 
+            if (shmaddr == (void *)-1)
             {
                 set_error_param(SHM_ATTACH);
                 perror("Could not attach to shared memory");
             }
-            
+
             data->data = shmaddr;
         }
         else
@@ -151,10 +155,13 @@ void save_images(const char *filename_base, const ImageBatch *batch)
 {
     uint32_t offset = 0;
     int image_index = 0;
-    
-    while (image_index < batch->num_images && offset < batch->batch_size) {
-        uint32_t image_size = *((uint32_t *)(batch->data + offset));
-        offset += sizeof(uint32_t); // Move the offset to the start of the image data
+
+    while (image_index < batch->num_images && offset < batch->batch_size)
+    {
+        uint32_t meta_size = *((uint32_t *)(batch->data + offset));
+        offset += sizeof(uint32_t); // Move the offset to the start of metadata
+        Metadata *metadata = metadata__unpack(NULL, meta_size, batch->data + offset);
+        offset += meta_size; // Move offset to start of image
 
         char filename[20];
         sprintf(filename, "%s%d.raw", filename_base, image_index);
@@ -169,12 +176,12 @@ void save_images(const char *filename_base, const ImageBatch *batch)
         }
 
         // Write the byte array to the file
-        fwrite(batch->data + offset, sizeof(unsigned char), image_size, filePtr);
+        fwrite(batch->data + offset, sizeof(unsigned char), metadata->size, filePtr);
 
         // Close the file
         fclose(filePtr);
 
-        offset += image_size; // Move the offset to the start of the next image block
+        offset += metadata->size; // Move the offset to the start of the next image block
 
         image_index++;
     }
@@ -227,12 +234,17 @@ void process(ImageBatch *input_batch)
 
     input_batch->data = shmaddr; // retrieve correct address in shared memory
 
-    if (load_pipeline_and_execute(input_batch) == SUCCESS)
-        save_images("output", input_batch);
-    
+    int pipeline_result = load_pipeline_and_execute(input_batch);
+
     // Reset err values
     err_current_pipeline = 0;
     err_current_module = 0;
+
+    if (pipeline_result == SUCCESS)
+    {
+        save_images("output", input_batch);
+        upload(input_batch->data, input_batch->batch_size);
+    }
 
     // Detach and free shared memory
     if (shmdt(shmaddr) == -1)
@@ -283,26 +295,71 @@ void process_all(int do_wait)
         process(&datarcv);
 }
 
+typedef struct ProcessThreadArgs
+{
+    int all;
+    int wait;
+    param_t *param;
+} ProcessThreadArgs;
+
+atomic_int is_processing = ATOMIC_VAR_INIT(0);
+
+void *process_thread(void *arg)
+{
+    ProcessThreadArgs *args = (ProcessThreadArgs *)arg;
+    int all = args->all;
+    int wait = args->wait;
+    param_t *param = args->param;
+    free(args);
+
+    if (all)
+        process_all(wait);
+    else
+        process_one(wait);
+
+    /* Indicate that processing is finished */
+    atomic_store(&is_processing, 0);
+    param_set_uint8(param, 0);
+
+    return NULL;
+}
+
 void callback_run(param_t *param, int index)
 {
-    switch (param_get_uint8(param))
+    uint8_t param_value = param_get_uint8(param);
+    if (!param_value)
+        return;
+
+    /* Check whether a thread is currently processing */
+    int expected = 0;
+    if (!atomic_compare_exchange_strong(&is_processing, &expected, 1))
     {
-    case PROCESS_ONE:
-        process_one(0);
-        break;
-    case PROCESS_ALL:
-        process_all(0);
-        break;
-    case PROCESS_WAIT_ONE:
-        process_one(1);
-        break;
-    case PROCESS_WAIT_ALL:
-        process_all(1);
-        break;
-    default:
+        // another thread is already processing
         return;
     }
 
-    // Turn off pipeline when finished
-    param_set_uint8(param, 0);
+    /* Initialize thread variables */
+    ProcessThreadArgs *args = malloc(sizeof(ProcessThreadArgs));
+    if (args == NULL)
+    {
+        // atomically update is_processing
+        atomic_store(&is_processing, 0);
+        return;
+    }
+
+    args->all = param_value % 2 == 0;
+    args->wait = param_value > 2;
+    args->param = param;
+
+    /* Execute pipeline on new thread, to allow callback to finish */
+    pthread_t processing_thread;
+    if (pthread_create(&processing_thread, NULL, process_thread, args) != 0)
+    {
+        // create thread failed
+        free(args);
+        atomic_store(&is_processing, 0);
+        return;
+    }
+
+    pthread_detach(processing_thread);
 }
