@@ -23,6 +23,12 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+// Signal handler for timeout
+void timeout_handler(int signum) {
+    set_error_param(MODULE_EXIT_TIMEOUT);
+    exit(EXIT_FAILURE); // Exit the child process with failure status
+}
+
 int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *output_pipe, int *error_pipe, ModuleParameterList *config)
 {
     // Create a new process
@@ -30,6 +36,10 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outp
 
     if (pid == 0)
     {
+        // Set up signal handler for timeout and starm alarm timer
+        signal(SIGALRM, timeout_handler);
+        alarm(param_get_uint32(&module_timeout));
+
         // Child process: Execute the module function
         ImageBatch result = func(input, config, error_pipe);
         size_t data_size = sizeof(result);
