@@ -84,15 +84,15 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
     int error_pipe[2];  // Pipe for inter-process error communication
     pipe(output_pipe);
     pipe(error_pipe);
-
-    for (size_t i = 0; i < data->pipeline_id; ++i)
+    int num = data->pipeline_id < 0 ? data->pipeline_id * (-1) : data->pipeline_id;
+    for (size_t i = 0; i < num; ++i)
     {
         err_current_module = i + 1;
         ProcessFunction module_function = pipeline->modules[0].module_function;
         ModuleParameterList *module_config = &module_parameter_lists[pipeline->modules[0].module_param_id];
 
         int module_status = execute_module_in_process(module_function, data, output_pipe, error_pipe, module_config);
-
+        
         if (module_status == FAILURE)
         {
             /* Close all active pipes */
@@ -205,9 +205,9 @@ int load_pipeline_and_execute(ImageBatch *input_batch)
 {
     // Execute the pipeline with parameter values
     Pipeline *pipeline;
-
+    int id = input_batch->pipeline_id < 0 ? 2 : 1;
     // Default to 1, as we use pipeline id to indicate amount of modules.
-    if (get_pipeline_by_id(1, &pipeline) == FAILURE)
+    if (get_pipeline_by_id(id, &pipeline) == FAILURE)
         return FAILURE;
 
     err_current_pipeline = pipeline->pipeline_id;
