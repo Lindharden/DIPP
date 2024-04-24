@@ -7,10 +7,58 @@
 #include "vmem_upload.h"
 #include "vmem_upload_param.h"
 
+VMEM_DEFINE_FILE(buffer, "buffer", "buffer.vmem", 1000000);
+
+static int overtake(int old, int target, int new) 
+{
+    if (old < target && target < new) return 1; // Simple overtake
+    if (target < old && target < new && new < old) return 1; // Wraparound overtake
+    return 0;
+}
+
+static int next(int current) 
+{ 
+    return (current + 1) % BUFFER_LIST_SIZE;
+}
+
+void upload_local(unsigned char *data, int len)
+{
+    uint32_t head = param_get_uint32(&bhead);
+    uint32_t tail = param_get_uint32(&btail);
+    uint32_t head_offset = param_get_uint32_array(&blist, head);
+    uint32_t tail_offset = param_get_uint32_array(&blist, tail);
+
+    uint32_t insert_offset = head_offset + len > BUFFER_VMEM_SIZE ? 0 : head_offset;
+    uint32_t new_head_offset = insert_offset + len;
+
+    if (overtake(head_offset, tail_offset, new_head_offset)) 
+    {
+        uint32_t next_tail = next(tail);
+        uint32_t next_tail_offset = param_get_int32_array(&blist, next_tail);
+
+        while (!overtake(tail_offset, new_head_offset, next_tail_offset))
+        {
+            tail_offset = next_tail_offset;
+            next_tail = next(next_tail);
+            next_tail_offset = param_get_int32_array(&blist, next_tail);
+        }
+        
+        tail = next_tail;
+    }
+
+    uint32_t new_head = next(head);
+    uint32_t new_tail = tail < new_head ? next(tail) : tail;
+    param_set_uint32(&bhead, new_head);
+    param_set_uint32(&btail, new_tail);
+    param_set_uint64_array(&blist, new_head, new_head_offset);
+
+    vmem_file_write(&vmem_buffer, insert_offset, (char *)data, len);
+}
+
 vmem_list2_t vmem_radio = {0};
 uint8_t current_radio_node_id = 0;
 
-void upload(unsigned char *data, int len)
+void upload_remote(unsigned char *data, int len)
 {
     /* Fetch radio CSP node ID */
     uint8_t radio_id = param_get_uint8(&radio_node_id);

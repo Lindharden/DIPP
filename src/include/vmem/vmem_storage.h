@@ -35,4 +35,8 @@ extern vmem_t vmem_storage;
 #define VMEM_ERROR_CODE 0x1318      // 188 bytes apart from previous address
 #define VMEM_RADIO_NODE_ID 0x131C   // 4 bytes apart from previous address
 
+#define VMEM_BUFFER_LIST 0x1321
+#define VMEM_BUFFER_HEAD 0x1388
+#define VMEM_BUFFER_TAIL 0x138C
+
 #endif
