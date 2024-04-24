@@ -47,10 +47,10 @@ void upload_local(unsigned char *data, int len)
     }
 
     uint32_t new_head = next(head);
-    uint32_t new_tail = tail < new_head ? next(tail) : tail;
+    uint32_t new_tail = tail == new_head ? next(tail) : tail;
     param_set_uint32(&bhead, new_head);
     param_set_uint32(&btail, new_tail);
-    param_set_uint64_array(&blist, new_head, new_head_offset);
+    param_set_uint32_array(&blist, new_head, new_head_offset);
 
     vmem_file_write(&vmem_buffer, insert_offset, (char *)data, len);
 }
