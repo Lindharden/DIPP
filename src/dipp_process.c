@@ -184,6 +184,7 @@ void save_images(const char *filename_base, const ImageBatch *batch)
         offset += metadata->size; // Move the offset to the start of the next image block
 
         image_index++;
+    }
 }
 
 int get_pipeline_by_id(int pipeline_id, Pipeline **pipeline)
