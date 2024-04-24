@@ -164,23 +164,26 @@ void save_images(const char *filename_base, const ImageBatch *batch)
         offset += meta_size; // Move offset to start of image
 
         char filename[20];
-        sprintf(filename, "%s%d.png", filename_base, image_index);
+        sprintf(filename, "%s%d.raw", filename_base, image_index);
 
-        int stride = metadata->width * metadata->channels * sizeof(uint8_t);
-        int success = stbi_write_png(filename, metadata->width, metadata->height, metadata->channels, batch->data + offset, stride);
-        if (!success)
-        {
-            fprintf(stderr, "Error writing image to %s\n", filename);
+        FILE *filePtr;
+
+        // Open the file in binary mode for writing
+        filePtr = fopen(filename, "wb");
+        if (filePtr == NULL) {
+        fprintf(stderr, "Error opening file.\n");
+        return 1;
         }
-        else
-        {
-            printf("Image saved as %s\n", filename);
-        }
+
+        // Write the byte array to the file
+        fwrite(batch->data + offset, sizeof(unsigned char), metadata->size, filePtr);
+
+        // Close the file
+        fclose(filePtr);
 
         offset += metadata->size; // Move the offset to the start of the next image block
 
         image_index++;
-    }
 }
 
 int get_pipeline_by_id(int pipeline_id, Pipeline **pipeline)
