@@ -52,7 +52,7 @@ void upload_local(unsigned char *data, int len)
     param_set_uint32(&btail, new_tail);
     param_set_uint32_array(&blist, new_head, new_head_offset);
 
-    vmem_file_write(&vmem_buffer, insert_offset, (char *)data, len);
+    vmem_file_write(&vmem_buffer, insert_offset, data, len);
 }
 
 vmem_list2_t vmem_radio = {0};
