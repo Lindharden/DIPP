@@ -239,7 +239,7 @@ void process(ImageBatch *input_batch)
     if (pipeline_result == SUCCESS)
     {
         //save_images("output", input_batch);
-        upload_local(input_batch->data, input_batch->batch_size);
+        upload(input_batch->data, input_batch->batch_size);
     }
 
     // Detach and free shared memory
