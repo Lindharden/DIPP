@@ -9,6 +9,9 @@
 /* CSP Node IDs */
 #define PARAMID_RADIO_NODE_ID 3
 
+/* Module timeout parameter */
+#define PARAMID_MODULE_TIMEOUT 4
+
 /* Pipeline ids starting at 10 */
 #define PARAMID_PIPELINE_CONFIG_1 10
 #define PARAMID_PIPELINE_CONFIG_2 11
