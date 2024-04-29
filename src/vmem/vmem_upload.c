@@ -7,8 +7,6 @@
 #include "vmem_upload.h"
 #include "vmem_upload_param.h"
 
-VMEM_DEFINE_FILE(buffer, "buffer", "buffer.vmem", 1000000);
-
 static int overtake(int old, int target, int new) 
 {
     if (old < target && target < new) return 1; // Simple overtake
@@ -26,6 +24,7 @@ uint8_t buffer_node_id = 0;
 void upload(unsigned char *data, int len)
 {
     uint8_t node = param_get_uint8(&radio_node_id);
+    printf("node: %d\n", node);
     int timeout = 1000;
 
     if (vmem_file.vaddr == 0 || node != buffer_node_id)
@@ -44,17 +43,24 @@ void upload(unsigned char *data, int len)
         set_error_param(INTERNAL_VMEM_NOT_FOUND);
     }
 
+    printf("vmem: %s\n", vmem_file.name);
 	uint32_t _head;
 	uint32_t _tail;
 	uint32_t _list[BUFFER_LIST_SIZE];
+	PARAM_DEFINE_REMOTE_DYNAMIC(PARAMID_BUFFER_LIST, buffer_list, node, PARAM_TYPE_UINT32, BUFFER_LIST_SIZE, sizeof(uint32_t), PM_REMOTE, &_list, NULL);
 	PARAM_DEFINE_REMOTE_DYNAMIC(PARAMID_BUFFER_HEAD, buffer_head, node, PARAM_TYPE_UINT32, -1, 0, PM_REMOTE, &_head, NULL);
 	PARAM_DEFINE_REMOTE_DYNAMIC(PARAMID_BUFFER_TAIL, buffer_tail, node, PARAM_TYPE_UINT32, -1, 0, PM_REMOTE, &_tail, NULL);
-	PARAM_DEFINE_REMOTE_DYNAMIC(PARAMID_BUFFER_LIST, buffer_list, node, PARAM_TYPE_UINT32, BUFFER_LIST_SIZE, sizeof(uint32_t), PM_REMOTE, &_list, NULL);
+    
+    /* Add remote parameters to local parameters */
+    param_list_add(&buffer_head);
+    param_list_add(&buffer_tail);
+    param_list_add(&buffer_list);
+    
     if (param_pull_single(&buffer_head, -1, 1, 0, node, timeout, 2) < 0)
     {
         set_error_param(INTERNAL_REMOTE_PARAM_PULL);
         return;
-    }    
+    }
     if (param_pull_single(&buffer_tail, -1, 1, 0, node, timeout, 2) < 0)
     {
         set_error_param(INTERNAL_REMOTE_PARAM_PULL);
@@ -65,6 +71,9 @@ void upload(unsigned char *data, int len)
         set_error_param(INTERNAL_REMOTE_PARAM_PULL);
         return;        
     }
+    printf("head: %d\n", _head);
+    printf("tail: %d\n", _tail);
+    printf("list: %d\n", _list[_head]);
 
     uint32_t head = _head;
     uint32_t tail = _tail;
@@ -102,7 +111,7 @@ void upload(unsigned char *data, int len)
         set_error_param(INTERNAL_REMOTE_PARAM_PUSH);
         return;
     }
-    if (param_push_single(&buffer_head, new_head, &new_head_offset, 0, node, timeout, 2, 1) < 0)
+    if (param_push_single(&buffer_list, new_head, &new_head_offset, 0, node, timeout, 2, 1) < 0)
     {
         set_error_param(INTERNAL_REMOTE_PARAM_PUSH);
         return;
