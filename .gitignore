@@ -9,6 +9,9 @@
 # vmem files for persistent parameters
 *.vmem
 
+# Jpeg xl encoded files
+*.jxl
+
 # Compiled files
 /sim/camera
 /src/pipeline/pipeline

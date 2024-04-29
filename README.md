@@ -93,6 +93,7 @@ DIPP includes an integer parameter indicating the most recent cause of failure. 
 | 515        | Internal Error: VMEM Upload Failed                     |
 | 600        | Module Exit Error: Crash                               |
 | 601        | Module Exit Error: Normal                              |
+| 602        | Module Exit Error: Timeout                             |
 | 700-799    | Module Exit Error: Custom error code defined by module |
 
 All error codes are suffixed with ID of the pipeline (1 digit ranging from 1-9) and index of the module (2 digits ranging from 1-99) if applicable. Error codes suffixed with 0's indicate failure happening outside of a module.
