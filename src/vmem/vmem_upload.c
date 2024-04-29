@@ -24,7 +24,6 @@ uint8_t buffer_node_id = 0;
 void upload(unsigned char *data, int len)
 {
     uint8_t node = param_get_uint8(&radio_node_id);
-    printf("node: %d\n", node);
     int timeout = 1000;
 
     if (vmem_file.vaddr == 0 || node != buffer_node_id)
@@ -43,7 +42,6 @@ void upload(unsigned char *data, int len)
         set_error_param(INTERNAL_VMEM_NOT_FOUND);
     }
 
-    printf("vmem: %s\n", vmem_file.name);
 	uint32_t _head;
 	uint32_t _tail;
 	uint32_t _list[BUFFER_LIST_SIZE];
@@ -71,9 +69,6 @@ void upload(unsigned char *data, int len)
         set_error_param(INTERNAL_REMOTE_PARAM_PULL);
         return;        
     }
-    printf("head: %d\n", _head);
-    printf("tail: %d\n", _tail);
-    printf("list: %d\n", _list[_head]);
 
     uint32_t head = _head;
     uint32_t tail = _tail;

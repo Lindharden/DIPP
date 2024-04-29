@@ -7,7 +7,6 @@
 
 #include <vmem/vmem_file.h>
 #include <vmem/vmem.h>
-extern vmem_t vmem_buffer;
 #define BUFFER_LIST_SIZE 10
 #define BUFFER_VMEM_SIZE 1000000
 
