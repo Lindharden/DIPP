@@ -3,7 +3,12 @@
 
 #define UPLOAD_TIMEOUT 10000
 #define VMEM_LOCATE_TIMEOUT 10000
-#define VMEM_NAME "image_buffer.vmem"
+#define VMEM_NAME "buffer.vmem"
+
+#include <vmem/vmem_file.h>
+#include <vmem/vmem.h>
+#define BUFFER_LIST_SIZE 10
+#define BUFFER_VMEM_SIZE 1000000
 
 /**
  * Upload data to another node at the specified address.

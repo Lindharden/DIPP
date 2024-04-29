@@ -238,7 +238,7 @@ void process(ImageBatch *input_batch)
 
     if (pipeline_result == SUCCESS)
     {
-        save_images("output", input_batch);
+        //save_images("output", input_batch);
         upload(input_batch->data, input_batch->batch_size);
     }
 
