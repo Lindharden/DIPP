@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <param/param.h>
+#include <brotli/decode.h>
 #include "dipp_error.h"
 #include "dipp_config.h"
 #include "dipp_config_param.h"
@@ -17,13 +18,18 @@ static int is_setup = 0;
 
 size_t get_param_buffer(uint8_t **out, param_t *param)
 {
-    // initialize buffer for module parameters
-    int initial_buf_size = DATA_PARAM_SIZE;
-    uint8_t buf[initial_buf_size];
-    param_get_data(param, buf, initial_buf_size);
-    int buf_size = (int)buf[0];
+    uint8_t buf[DATA_PARAM_SIZE];
+    param_get_data(param, buf, DATA_PARAM_SIZE);
 
-    *out = malloc(buf_size * sizeof(uint8_t));
+    size_t decoded_size = DATA_PARAM_SIZE;
+    uint8_t decoded_buffer[decoded_size];
+    if (BrotliDecoderDecompress((size_t)buf[0], buf + 1, &decoded_size, decoded_buffer) != BROTLI_DECODER_RESULT_SUCCESS)
+    {
+        set_error_param(INTERNAL_BROTLI_DECODE);
+        return 0;
+    }
+
+    *out = malloc(decoded_size * sizeof(uint8_t));
     if (!*out)
     {
         set_error_param(MEMORY_MALLOC);
@@ -31,12 +37,12 @@ size_t get_param_buffer(uint8_t **out, param_t *param)
     }
 
     // Copy the data from the original buffer to the new buffer
-    for (size_t i = 0; i < buf_size; i++)
+    for (size_t i = 0; i < decoded_size; i++)
     {
-        (*out)[i] = buf[i + 1];
+        (*out)[i] = decoded_buffer[i];
     }
 
-    return buf_size;
+    return decoded_size;
 }
 
 // Function to load a module and parameter from a configuration file

@@ -91,6 +91,7 @@ DIPP includes an integer parameter indicating the most recent cause of failure. 
 | 513        | Internal Error: Failed to push remote parameter        |
 | 514        | Internal Error: VMEM Not Found                         |
 | 515        | Internal Error: VMEM Upload Failed                     |
+| 516        | Internal Error: Brotli Decoding Failed                 |
 | 600        | Module Exit Error: Crash                               |
 | 601        | Module Exit Error: Normal                              |
 | 602        | Module Exit Error: Timeout                             |
