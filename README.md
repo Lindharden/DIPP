@@ -3,6 +3,14 @@ DIPP stands for: DISCO Image Processing Pipeline.
 
 DIPP is a modular image processing pipeline tailored to run on the DISCO-2 CubeSat.
 
+## Prerequisites
+
+To build DIPP, the following packages is required:
+```
+sudo apt install libcurl4-openssl-dev git build-essential libsocketcan-dev can-utils libzmq3-dev libyaml-dev pkg-config fonts-powerline python3-pip libelf-dev libbsd-dev libprotobuf-c-dev brotli
+sudo pip3 install meson ninja
+```
+
 ## Pipeline modules
 To write modules for the pipeline, checkout the [DISCO-2 module template](https://github.com/Lindharden/DISCO2-module-template).
 
