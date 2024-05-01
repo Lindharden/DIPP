@@ -7,7 +7,7 @@ DIPP is a modular image processing pipeline tailored to run on the DISCO-2 CubeS
 
 To build DIPP, the following packages is required:
 ```
-sudo apt install libcurl4-openssl-dev git build-essential libsocketcan-dev can-utils libzmq3-dev libyaml-dev pkg-config fonts-powerline python3-pip libelf-dev libbsd-dev libprotobuf-c-dev brotli
+sudo apt install libcurl4-openssl-dev git build-essential libsocketcan-dev can-utils libzmq3-dev libyaml-dev pkg-config fonts-powerline python3-pip libelf-dev libbsd-dev libprotobuf-c-dev brotli libbrotli-dev
 sudo pip3 install meson ninja
 ```
 
