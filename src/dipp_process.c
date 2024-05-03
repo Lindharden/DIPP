@@ -281,9 +281,19 @@ void process(ImageBatch *input_batch, int time)
             exit(EXIT_FAILURE);
         }
 
-        long execution_time = BILLION * (stop_time.tv_sec - start_time.tv_sec) + (stop_time.tv_nsec - start_time.tv_nsec);
-        float throughput = (input_batch->num_images * BILLION) / (execution_time / input_batch->pipeline_id); // MB / sec
+        long start = BILLION * start_time.tv_sec + start_time.tv_nsec;
+        long end = BILLION * stop_time.tv_sec + stop_time.tv_nsec;
+
+        long execution_time = end - start; // nanoseconds 
+
+        double throughput = (double)input_batch->num_images / ((double)execution_time / BILLION); // mb / sec
+        
         printf("%d %d %ld %.2f\n", input_batch->pipeline_id, input_batch->num_images, execution_time, throughput);
+
+        // double throughput = input_batch->num_images / execution_time; // MB / sec
+
+        // // float throughput = input_batch->num_images * BILLION / execution_time; // MB / sec
+        // printf("%d %d %.2f %.2f\n", input_batch->pipeline_id, input_batch->num_images, execution_time, throughput); // pipeline_id = number of modules. num_images = number_mb
     }
 
     // Reset err values
