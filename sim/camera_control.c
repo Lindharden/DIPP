@@ -83,5 +83,8 @@ int main(int argc, char *argv[])
         }
 
         printf("Image sent!\n");
+
+        // detach from the shared memory segment
+        shmdt(shmaddr);
     }
 }
