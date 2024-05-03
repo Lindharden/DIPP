@@ -1,7 +1,7 @@
 #!/bin/bash
 
-modules=(1 2) # 4 8 16 32 64 128) # Amount of modules
-sizes=(1 2) # 4 8 16 32 64 128) # Image sizes
+modules=(1 2 4 8) # 16 32 64 128) # Amount of modules
+sizes=(3000) # 16 32 64 128) # Image sizes
 reps=${1:-50} # Default to 50 unless provided as argument
 
 # LATENCY / THROUGHPUT EXPERIMENTS
@@ -13,7 +13,9 @@ dipp_process=$!
 for module in "${modules[@]}"; do
     echo "Executing with $module modules"
     for size in "${sizes[@]}"; do
-        ./builddir/test_cam $size $reps $module
+        for i in $(seq 1 $reps); do 
+            ./builddir/test_cam $size 1 $module
+        done
     done
 done
 
@@ -28,7 +30,7 @@ for module in "${modules[@]}"; do
     for size in "${sizes[@]}"; do
         for i in $(seq 1 $reps); do 
             ./builddir/test_cam $size 1 $module
-            perf stat -e cache-misses,cache-references,context-switches,cpu-cycles,instructions ./builddir/dipp > "dipp_perf_result.txt" 2>&1
+            perf stat -e cache-misses,cache-references,context-switches,cpu-cycles,instructions ./builddir/dipp -i ZMQ -p localhost -a 162 > "dipp_perf_result.txt" 2>&1
 
             perf_stats=($(grep -E 'cache-misses|cache-references|context-switches|cpu-cycles|instructions' "dipp_perf_result.txt" | awk '{gsub(",", ""); print $1}'))
             result="$module $size $i "
@@ -44,3 +46,17 @@ for module in "${modules[@]}"; do
 done
 
 rm "dipp_perf_result.txt"
+
+# MEMORY EXPERIMENTS
+echo "Running memory experiments"
+echo "modules size rep peak_memory" > "dipp_memory_experiment.txt"
+for module in "${modules[@]}"; do
+    echo "Executing with $module modules"
+    for size in "${sizes[@]}"; do
+        for i in $(seq 1 $reps); do 
+            ./builddir/test_cam $size 1 $module
+            peak_memory=$(/usr/bin/time -f "%M" ./builddir/dipp -i ZMQ -p localhost -a 162 2>&1 | tail -n 1)
+            echo "$module $size $i $peak_memory" >> dipp_memory_experiment.txt  # Remove trailing space and print
+        done
+    done
+done
