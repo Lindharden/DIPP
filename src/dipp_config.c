@@ -96,6 +96,9 @@ void setup_pipeline(param_t *param, int index)
         pipelines[pipeline_id].modules[module_idx].module_function = load_module(mdef->name);
         pipelines[pipeline_id].modules[module_idx].module_param_id = mdef->param_id - 1;
     }
+
+    /* Free the unpacked pipeline definition data */
+    pipeline_definition__free_unpacked(pdef, NULL);
 }
 
 void setup_module_config(param_t *param, int index)
@@ -165,6 +168,9 @@ void setup_module_config(param_t *param, int index)
                 break;
         }
     }
+
+    /* Free the unpacked module config data */
+    module_config__free_unpacked(mcon, NULL);
 }
 
 void setup_all_pipelines()
