@@ -25,7 +25,25 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-#define BILLION 1000000000L // 1 billion nanoseconds in a second
+#define BILLION 1000000000LL
+
+enum { NS_PER_SECOND = 1000000000 };
+
+void sub_timespec(struct timespec t1, struct timespec t2, struct timespec *td)
+{
+    td->tv_nsec = t2.tv_nsec - t1.tv_nsec;
+    td->tv_sec  = t2.tv_sec - t1.tv_sec;
+    if (td->tv_sec > 0 && td->tv_nsec < 0)
+    {
+        td->tv_nsec += NS_PER_SECOND;
+        td->tv_sec--;
+    }
+    else if (td->tv_sec < 0 && td->tv_nsec > 0)
+    {
+        td->tv_nsec -= NS_PER_SECOND;
+        td->tv_sec++;
+    }
+}
 
 int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *output_pipe, int *error_pipe, ModuleParameterList *config)
 {
@@ -250,6 +268,10 @@ void process(ImageBatch *input_batch, int time)
 
     int key_before = input_batch->shm_key; // save key before
     int pipeline_result = load_pipeline_and_execute(input_batch);
+    if (pipeline_result == FAILURE) {
+        perror("pipeline failure");
+    }
+
     int key_after = input_batch->shm_key; // save key after
 
     /* Override shmaddr in case module changed to new shm segment */
@@ -281,12 +303,17 @@ void process(ImageBatch *input_batch, int time)
             exit(EXIT_FAILURE);
         }
 
-        long start = BILLION * start_time.tv_sec + start_time.tv_nsec;
-        long end = BILLION * stop_time.tv_sec + stop_time.tv_nsec;
+        uint64_t start = BILLION * start_time.tv_sec + start_time.tv_nsec;
+        uint64_t end = BILLION * stop_time.tv_sec + stop_time.tv_nsec;
 
-        long execution_time = end - start; // nanoseconds 
+        uint64_t execution_time = end - start; // nanoseconds 
 
         double throughput = (double)input_batch->num_images / ((double)execution_time / BILLION); // mb / sec
+
+        struct timespec delta;
+        sub_timespec(start_time, stop_time, &delta);
+        //printf("%d.%.9ld\n", (int)delta.tv_sec, delta.tv_nsec);
+
         
         printf("%d %d %ld %.2f\n", input_batch->pipeline_id, input_batch->num_images, execution_time, throughput);
 
