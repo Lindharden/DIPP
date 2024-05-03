@@ -93,8 +93,11 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, ModulePar
 int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
 {   
     /* Initiate communication pipes */
-    pipe(output_pipe);
-    pipe(error_pipe);
+    if (pipe(output_pipe) == -1 || pipe(error_pipe) == -1)
+    {
+        set_error_param(PIPE_CREATE);
+        return FAILURE;
+    }
 
     for (size_t i = 0; i < pipeline->num_modules; ++i)
     {

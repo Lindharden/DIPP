@@ -83,6 +83,7 @@ DIPP includes an integer parameter indicating the most recent cause of failure. 
 | 303        | Shared Memory Error: Attach                            |
 | 400        | Pipe Error: Read                                       |
 | 401        | Pipe Error: Empty                                      |
+| 402        | Pipe Error: Create                                     |
 | 500        | Internal Error: PID Not Found                          |
 | 501        | Internal Error: Shared Object Not Found                |
 | 502        | Internal Error: Run Not Found                          |
