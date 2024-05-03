@@ -8,7 +8,7 @@
 #include <vmem/vmem_file.h>
 #include <vmem/vmem.h>
 #define BUFFER_LIST_SIZE 10
-#define BUFFER_VMEM_SIZE 1000000
+#define BUFFER_VMEM_SIZE 100000000
 
 /**
  * Upload data to another node at the specified address.
