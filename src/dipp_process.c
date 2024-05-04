@@ -25,7 +25,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-#define BILLION 1000000000L // 1 billion nanoseconds in a second
+#define BILLION 1000000000LL
 
 int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *output_pipe, int *error_pipe, ModuleParameterList *config)
 {
@@ -280,8 +280,13 @@ void process(ImageBatch *input_batch, int time)
             exit(EXIT_FAILURE);
         }
 
-        long execution_time = BILLION * (stop_time.tv_sec - start_time.tv_sec) + (stop_time.tv_nsec - start_time.tv_nsec);
-        float throughput = (input_batch->num_images * BILLION) / (execution_time / input_batch->pipeline_id); // MB / sec
+        uint64_t start = BILLION * start_time.tv_sec + start_time.tv_nsec;
+        uint64_t end = BILLION * stop_time.tv_sec + stop_time.tv_nsec;
+
+        uint64_t execution_time = end - start; // nanoseconds 
+
+        double throughput = (double)input_batch->num_images / ((double)execution_time / BILLION); // mb / sec
+        
         printf("%d %d %ld %.2f\n", input_batch->pipeline_id, input_batch->num_images, execution_time, throughput);
     }
 
@@ -309,7 +314,7 @@ void process(ImageBatch *input_batch, int time)
 int get_message_from_queue(ImageBatch *datarcv, int do_wait)
 {
     int msg_queue_id;
-    if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0)) == -1)
+    if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0666 | IPC_CREAT)) == -1)
     {
         set_error_param(MSGQ_NOT_FOUND);
         return FAILURE;
