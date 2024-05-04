@@ -1,8 +1,8 @@
 #!/bin/bash
 
-modules=(32 64 128) # Amount of modules
-sizes=(128 256 512 1024 2048) # Image sizes
-reps=${1:-50} # Default to 50 unless provided as argument
+modules=(1 4 16 32 64) # Amount of modules
+sizes=(1 2 4 8 16 32 64 128 256 512 1) # Image sizes
+reps=${1:-10} # Default to 50 unless provided as argument
 
 # LATENCY / THROUGHPUT EXPERIMENTS
 echo "Running latency/throughput experiments"
@@ -13,13 +13,13 @@ dipp_process=$!
 for module in "${modules[@]}"; do
     echo "Executing with $module modules"
     for size in "${sizes[@]}"; do
-        for i in $(seq 1 $reps); do 
+        for i in $(seq 1 $reps); do
             ./builddir/test_cam $size $module
         done
     done
 done
 
-sleep 10
+sleep 120
 kill $dipp_process >/dev/null 2>&1
 
 # PERF EXPERIMENTS
@@ -50,7 +50,7 @@ rm "dipp_perf_result.txt"
 # MEMORY EXPERIMENTS
 top_output="top_output.txt"
 echo "Running memory experiments"
-echo "modules size rep snapshot %CPU %MEM mem_used" > "dipp_top_experiment.txt"
+echo "modules size rep snapshot %CPU %MEM mem_total mem_free mem_used mem_buff_cache swap_total swap_free swap_used swap_avail" > "dipp_top_experiment.txt"
 for module in "${modules[@]}"; do
     echo "Executing with $module modules"
     for size in "${sizes[@]}"; do
@@ -60,38 +60,72 @@ for module in "${modules[@]}"; do
             top -b -d 0.1 > "$top_output" &
             top_pid=$!
 
-            ./builddir/dipp -i ZMQ -p localhost -a 162 &
+            sleep 0.2
+
+            ./builddir/dipp -i ZMQ -p localhost -a 162 >/dev/null &
             dipp_pid=$!
 
             wait "$dipp_pid"
 
-            cpu_dipp="0.0"
-            mem_dipp="0.0"
+            sleep 0.2
+
+            kill $top_pid >/dev/null 2>&1
+            wait $top_pid >/dev/null 2>&1
+
+            cpu_dipp_total="0.0"
+            mem_dipp_total="0.0"
+
+            mem_total="0.0"
+            mem_free="0.0"
             mem_used="0.0"
-            dipp_read=false
+            mem_buff_cache="0.0"
+
+            swap_total="0.0"
+            swap_free="0.0"
+            swap_used="0.0"
+            swap_avail="0.0"
             i=0        
 
             while IFS= read -r line; do
                 if [[ $line =~ ^top ]]; then
                     if [[ $i > 0 ]]; then
-                        echo "$module $size $rep $i $cpu_dipp $mem_dipp $mem_used" >> "dipp_top_experiment.txt"
+                        echo "$module $size $rep $i $cpu_dipp_total $mem_dipp_total $mem_total $mem_free $mem_used $mem_buff_cache $swap_total $swap_free $swap_used $swap_avail" >> "dipp_top_experiment.txt"
                         # Reset values in case the processes are not present
-                        cpu_dipp="0.0"
-                        mem_dipp="0.0"
-                        dipp_read=false
+                        cpu_dipp_total=0.0
+                        mem_dipp_total=0.0
+                        
+                        mem_total="0.0"
+                        mem_free="0.0"
+                        mem_used="0.0"
+                        mem_buff_cache="0.0"
+
+                        swap_total="0.0"
+                        swap_free="0.0"
+                        swap_used="0.0"
+                        swap_avail="0.0"
                     fi
                     ((i++))
                 fi
-                if [[ $line =~ dipp ]] && ! $dipp_read; then
+                if [[ $line =~ dipp ]]; then
                     cpu_dipp=$(echo "$line" | awk '{print $9}')
                     mem_dipp=$(echo "$line" | awk '{print $10}')
-                    dipp_read=true
+                    cpu_dipp_total=$(echo "$cpu_dipp_total + $cpu_dipp" | bc)
+                    mem_dipp_total=$(echo "$mem_dipp_total + $mem_dipp" | bc)
                 fi
                 if [[ $line =~ "MiB Mem" ]]; then
+                    mem_total=$(echo "$line" | awk '{print $4}')
+                    mem_free=$(echo "$line" | awk '{print $6}')
                     mem_used=$(echo "$line" | awk '{print $8}')
+                    mem_buff_cache=$(echo "$line" | awk '{print $10}')
+                fi
+                if [[ $line =~ "MiB Swap" ]]; then
+                    swap_total=$(echo "$line" | awk '{print $3}')
+                    swap_free=$(echo "$line" | awk '{print $5}')
+                    swap_used=$(echo "$line" | awk '{print $7}')
+                    swap_avail=$(echo "$line" | awk '{print $9}')
                 fi
             done < $top_output
-            echo "$module $size $rep $i $cpu_dipp $mem_dipp $mem_used" >> "dipp_top_experiment.txt"
+            echo "$module $size $rep $i $cpu_dipp_total $mem_dipp_total $mem_total $mem_free $mem_used $mem_buff_cache $swap_total $swap_free $swap_used $swap_avail" >> "dipp_top_experiment.txt"
         done
     done
 done

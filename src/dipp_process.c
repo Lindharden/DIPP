@@ -347,7 +347,7 @@ void process(ImageBatch *input_batch, int time)
 int get_message_from_queue(ImageBatch *datarcv, int do_wait)
 {
     int msg_queue_id;
-    if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0)) == -1)
+    if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0666 | IPC_CREAT)) == -1)
     {
         set_error_param(MSGQ_NOT_FOUND);
         return FAILURE;

@@ -53,21 +53,21 @@ int main(int argc, char *argv[])
     metadata__pack(&new_meta, meta_buf);
 
     uint32_t batch_size = (image_size + sizeof(uint32_t) + meta_size) * data.num_images;
-
-    /* Get timestamp (used as SHM key) */
-    struct timespec tms;
-    if (clock_gettime(CLOCK_MONOTONIC, &tms)) {
-        return -1;
-    }
-    int64_t key = tms.tv_nsec;
     data.batch_size = batch_size;
-    data.shm_key = key;
 
-    /* Retry shmget if it fails to create the shared memory segment */
-    int shmid = shmget(data.shm_key, batch_size, IPC_CREAT | 0666);
-    if (shmid == -1) {
+    int shmid = -1;
+    while (shmid == -1) {
+        /* Get timestamp (used as SHM key) */
+        struct timespec tms;
+        if (clock_gettime(CLOCK_MONOTONIC, &tms)) {
+            return -1;
+        }
+        int64_t key = tms.tv_nsec;
+        data.shm_key = key;
+
+        /* Retry shmget if it fails to create the shared memory segment */
+        shmid = shmget(data.shm_key, batch_size, IPC_CREAT | 0666);
         sleep(1);
-        perror("shmget error");
     }
     
     char *shmaddr = shmat(shmid, NULL, 0);
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 
     // create msg queue
     int msg_queue_id;
-    if ((msg_queue_id = msgget(77, 0666 | IPC_CREAT)) == -1)
+    if ((msg_queue_id = msgget(78, 0666 | IPC_CREAT)) == -1)
     {
         perror("msgget error");
     }

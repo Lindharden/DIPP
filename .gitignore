@@ -10,6 +10,7 @@
 # Compiled files
 /sim/camera
 /src/pipeline/pipeline
+*.txt
 
 # Object files
 *.o
