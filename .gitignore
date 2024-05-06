@@ -1,5 +1,6 @@
 # Image files
 *.png
+*.bayerRG
 
 # IDE specific files
 /.vscode/
