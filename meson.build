@@ -47,3 +47,16 @@ dipp = executable('dipp', sources,
 	c_args : c_args,
 	link_args : ['-ldl'],
 )
+
+test_cam_sources = files([
+	'test_cam/camera_controller.c',
+	'test_cam/metadata.pb-c.c',
+])
+
+test_cam_deps = [proto_c_dep, m_dep]
+
+test_cam = executable('test_cam', test_cam_sources,
+	include_directories : include_directories('test_cam'),
+	dependencies : test_cam_deps,
+	install : true,
+)

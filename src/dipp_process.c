@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stdatomic.h>
+#include "dipp_run.h"
 #include "dipp_error.h"
 #include "dipp_config.h"
 #include "dipp_process.h"
@@ -276,12 +277,13 @@ void process(ImageBatch *input_batch)
     // Reset err values
     err_current_pipeline = 0;
     err_current_module = 0;
-
+    printf("1\n");
     if (pipeline_result == SUCCESS)
     {
         //save_images("output", input_batch);
         upload(input_batch->data, input_batch->batch_size);
     }
+    printf("2\n");
 
     // Detach and free shared memory
     if (shmdt(shmaddr) == -1)
@@ -297,7 +299,7 @@ void process(ImageBatch *input_batch)
 int get_message_from_queue(ImageBatch *datarcv, int do_wait)
 {
     int msg_queue_id;
-    if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0)) == -1)
+    if ((msg_queue_id = msgget(MSG_QUEUE_KEY, 0666 | IPC_CREAT)) == -1)
     {
         set_error_param(MSGQ_NOT_FOUND);
         return FAILURE;

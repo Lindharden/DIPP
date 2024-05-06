@@ -1,0 +1,22 @@
+#!/bin/sh
+cd ../csh/builddir
+./zmqproxy &
+zmq=$!
+
+sleep 2
+cd ../../disco-radio-mimic
+./builddir/radio &
+radio=$!
+
+sleep 2
+cd ../DIPP
+./builddir/test_cam &
+
+sleep 2
+./builddir/dipp -i ZMQ -p localhost -a 162 -q &
+dipp=$!
+
+sleep 60
+kill $zmq 
+kill $radio 
+kill $dipp
