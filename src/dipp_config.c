@@ -147,7 +147,7 @@ void setup_module_config(param_t *param, int index)
             return;
         }
 
-        module_parameter_lists[module_id].parameters[i]->key = mcon->parameters[i]->key;
+        module_parameter_lists[module_id].parameters[i]->key = strdup(mcon->parameters[i]->key);
         module_parameter_lists[module_id].parameters[i]->value_case = mcon->parameters[i]->value_case;
 
         switch (mcon->parameters[i]->value_case)
@@ -162,7 +162,7 @@ void setup_module_config(param_t *param, int index)
                 module_parameter_lists[module_id].parameters[i]->float_value = mcon->parameters[i]->float_value;
                 break;
             case CONFIG_PARAMETER__VALUE_STRING_VALUE:
-                module_parameter_lists[module_id].parameters[i]->string_value = mcon->parameters[i]->string_value;
+                module_parameter_lists[module_id].parameters[i]->string_value = strdup(mcon->parameters[i]->string_value);
                 break;
             default:
                 break;

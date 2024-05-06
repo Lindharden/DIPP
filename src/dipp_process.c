@@ -249,7 +249,29 @@ void process(ImageBatch *input_batch)
 
     input_batch->data = shmaddr; // retrieve correct address in shared memory
 
+    int key_before = input_batch->shm_key; // save key before
     int pipeline_result = load_pipeline_and_execute(input_batch);
+
+    int key_after = input_batch->shm_key; // save key after
+
+    /* Override shmaddr in case module changed to new shm segment */
+    if (key_after != key_before)
+    {
+        if ((shmid = shmget(input_batch->shm_key, 0, 0)) == FAILURE)
+        {
+            set_error_param(SHM_NOT_FOUND);
+            return;
+        }
+
+        // Attach to shared memory from id
+        shmaddr = shmat(shmid, NULL, 0);
+
+        if (shmaddr == (void *)-1)
+        {
+            set_error_param(SHM_ATTACH);
+            return;
+        }
+    }
 
     // Reset err values
     err_current_pipeline = 0;
