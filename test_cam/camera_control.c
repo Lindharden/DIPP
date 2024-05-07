@@ -55,6 +55,23 @@ int main(int argc, char *argv[])
     uint32_t batch_size = (image_size + sizeof(uint32_t) + meta_size) * data.num_images;
     data.batch_size = batch_size;
 
+    // create msg queue
+    int msg_queue_id;
+    if ((msg_queue_id = msgget(77, 0666 | IPC_CREAT)) == -1)
+    {
+        perror("msgget error");
+    }
+
+    /* Wait until quueue is empty before sending the next message */
+    struct msqid_ds queue_info;
+    while (1)
+    {
+        // Retrieve information about the message queue    
+        msgctl(msg_queue_id, IPC_STAT, &queue_info);
+        if (!queue_info.msg_qnum) break;
+        else sleep(1);
+    }
+
     int shmid = -1;
     while (shmid == -1) {
         /* Get timestamp (used as SHM key) */
@@ -81,23 +98,6 @@ int main(int argc, char *argv[])
         offset += meta_size;
         memcpy(shmaddr + offset, one_mb_image_data, image_size);
         offset += image_size;
-    }
-
-    // create msg queue
-    int msg_queue_id;
-    if ((msg_queue_id = msgget(77, 0666 | IPC_CREAT)) == -1)
-    {
-        perror("msgget error");
-    }
-
-    /* Wait until quueue is empty before sending the next message */
-    struct msqid_ds queue_info;
-    while (1)
-    {
-        // Retrieve information about the message queue    
-        msgctl(msg_queue_id, IPC_STAT, &queue_info);
-        if (!queue_info.msg_qnum) break;
-        else sleep(1);
     }
 
     // send msg to queue
