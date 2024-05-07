@@ -108,4 +108,10 @@ int main(int argc, char *argv[])
 
     // detach from shared memory
     shmdt(shmaddr);
+
+    // wait until DIPP has removed the shared memory segment
+    while (shmid != -1) {
+        shmid = shmget(data.shm_key, 0, 0);
+        sleep(1);
+    }
 }
