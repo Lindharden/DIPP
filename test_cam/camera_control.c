@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 
     // create msg queue
     int msg_queue_id;
-    if ((msg_queue_id = msgget(78, 0666 | IPC_CREAT)) == -1)
+    if ((msg_queue_id = msgget(77, 0666 | IPC_CREAT)) == -1)
     {
         perror("msgget error");
     }
