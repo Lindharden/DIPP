@@ -13,10 +13,17 @@ cd ../DIPP
 ./builddir/test_cam &
 
 sleep 2
-./builddir/dipp -i ZMQ -p localhost -a 162 -q &
+./builddir/dipp | tee dipp_output.txt &
 dipp=$!
 
-sleep 60
-kill $zmq 
+# Wait for upload to complete
+while ! grep -q "Uploaded" dipp_output.txt; do
+    sleep 1
+done
+
+echo "Finished uploading"
+
+sleep 10
 kill $radio 
 kill $dipp
+kill $zmq 

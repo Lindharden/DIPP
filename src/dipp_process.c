@@ -277,13 +277,12 @@ void process(ImageBatch *input_batch)
     // Reset err values
     err_current_pipeline = 0;
     err_current_module = 0;
-    printf("1\n");
+    
     if (pipeline_result == SUCCESS)
     {
         //save_images("output", input_batch);
         upload(input_batch->data, input_batch->batch_size);
     }
-    printf("2\n");
 
     // Detach and free shared memory
     if (shmdt(shmaddr) == -1)
