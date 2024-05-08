@@ -231,6 +231,12 @@ int load_pipeline_and_execute(ImageBatch *input_batch)
 
 void process(ImageBatch *input_batch)
 {
+    struct timespec s_time;
+    if (clock_gettime(CLOCK_MONOTONIC, &s_time) < 0)
+    {
+        perror("clock_gettime");
+        exit(EXIT_FAILURE);
+    }
     // Recieve shared memory id from recieved data
     int shmid;
     if ((shmid = shmget(input_batch->shm_key, 0, 0)) == FAILURE)
@@ -251,6 +257,7 @@ void process(ImageBatch *input_batch)
     input_batch->data = shmaddr; // retrieve correct address in shared memory
 
     int key_before = input_batch->shm_key; // save key before
+    // HEY
     int pipeline_result = load_pipeline_and_execute(input_batch);
 
     int key_after = input_batch->shm_key; // save key after
@@ -292,7 +299,19 @@ void process(ImageBatch *input_batch)
     if (shmctl(shmid, IPC_RMID, NULL) == -1)
     {
         set_error_param(SHM_REMOVE);
+    }    
+    
+    struct timespec e_time;
+    if (clock_gettime(CLOCK_MONOTONIC, &e_time) < 0)
+    {
+        perror("clock_gettime");
+        exit(EXIT_FAILURE);
     }
+
+    long start = 1000000000 * s_time.tv_sec + s_time.tv_nsec;
+    long end = 1000000000 * e_time.tv_sec + e_time.tv_nsec;
+    float diff = (float)(end - start) / 1000000;
+    printf("Execution time of process: %.3f ms\n", diff);
 }
 
 int get_message_from_queue(ImageBatch *datarcv, int do_wait)
