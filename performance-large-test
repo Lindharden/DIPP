@@ -1,8 +1,8 @@
 #!/bin/bash
 
-modules=(1 4 16 32 64) # Amount of modules
+modules=(1) # Amount of modules
 sizes=(512) # Image sizes
-reps=${1:-10} # Default to 50 unless provided as argument
+reps=${1:-5} # Default to 50 unless provided as argument
 
 # LATENCY / THROUGHPUT EXPERIMENTS
 echo "Running latency/throughput experiments"
