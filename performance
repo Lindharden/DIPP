@@ -14,7 +14,7 @@ for module in "${modules[@]}"; do
     echo "Executing with $module modules"
     for size in "${sizes[@]}"; do
         for i in $(seq 1 $reps); do
-            test_cam $size $module
+            test_cam $size $module 1
         done
     done
 done
@@ -29,7 +29,7 @@ for module in "${modules[@]}"; do
     echo "Executing with $module modules"
     for size in "${sizes[@]}"; do
         for i in $(seq 1 $reps); do 
-            test_cam $size $module
+            test_cam $size $module 0
             perf stat -e cache-misses,cache-references,context-switches,cpu-cycles,instructions dipp -i CAN -p can0 -a 162 > "dipp_perf_result.txt" 2>&1
 
             perf_stats=($(grep -E 'cache-misses|cache-references|context-switches|cpu-cycles|instructions' "dipp_perf_result.txt" | awk '{gsub(",", ""); print $1}'))
@@ -55,7 +55,7 @@ for module in "${modules[@]}"; do
     echo "Executing with $module modules"
     for size in "${sizes[@]}"; do
         for rep in $(seq 1 $reps); do 
-            test_cam $size $module
+            test_cam $size $module 0
 
             top -b -d 0.1 > "$top_output" &
             top_pid=$!

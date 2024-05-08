@@ -14,12 +14,14 @@ int main(int argc, char *argv[])
 {
     int mb_size = 1;
     int num_modules = 1;
-    if (argc < 3)
+    int wait = 1;
+    if (argc < 4)
     {
         return -1;
     }
     mb_size = atoi(argv[1]);
     num_modules = atoi(argv[2]);
+    wait = atoi(argv[3]);
     
     // Prepare the data
     ImageBatch data;
@@ -110,7 +112,7 @@ int main(int argc, char *argv[])
     shmdt(shmaddr);
 
     // wait until DIPP has removed the shared memory segment
-    while (shmid != -1) {
+    while (wait && shmid != -1) {
         shmid = shmget(data.shm_key, 0, 0);
         sleep(1);
     }
