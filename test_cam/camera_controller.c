@@ -9,6 +9,11 @@
 
 int main(int argc, char *argv[])
 {
+    if (argc < 2)
+    {
+        return -1;
+    }
+
     // Get timestamp (used for SHM key)
     struct timespec time;
     if (clock_gettime(CLOCK_MONOTONIC, &time) < 0)
@@ -20,7 +25,7 @@ int main(int argc, char *argv[])
     // Prepare the data
     ImageBatch data;
     data.mtype = 1;
-    data.num_images = 1;
+    data.num_images = atoi(argv[1]);
     data.shm_key = time.tv_nsec;
     data.pipeline_id = 1;
 
@@ -54,15 +59,18 @@ int main(int argc, char *argv[])
     char *shmaddr = shmat(shmid, NULL, 0);
     data.batch_size = batch_size;
     int offset = 0;
-    
-    // Insert metadata size before metadata
-    memcpy(shmaddr + offset, &meta_size, sizeof(uint32_t));
-    offset += sizeof(uint32_t);
-    memcpy(shmaddr + offset, &meta_buf, meta_size);
-    offset += meta_size;
-    // insert image
-    fread(shmaddr + offset, image_size, 1, fh);
-    offset += image_size;
+    for (size_t i = 0; i < data.num_images; i++)
+    {
+        // Insert metadata size before metadata
+        memcpy(shmaddr + offset, &meta_size, sizeof(uint32_t));
+        offset += sizeof(uint32_t);
+        memcpy(shmaddr + offset, &meta_buf, meta_size);
+        offset += meta_size;
+        // insert image
+        fseek(fh, 0, SEEK_SET);
+        fread(shmaddr + offset, 1, image_size, fh);
+        offset += image_size;
+    }
 
     // create msg queue
     int msg_queue_id;
