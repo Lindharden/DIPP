@@ -1,18 +1,20 @@
 #!/bin/bash
 
+radio -i CAN -p can0 -a 150
+top_output=top_output.txt
+
 num_images=(1 2 4 64 32 16 8 4 2 1)
 echo "TOP for DIPP E2E with Demosaic and Encoding modules plus radio offload" > e2e_top.txt
 echo "images snapshot %CPU %MEM mem_total mem_free mem_used mem_buff_cache swap_total swap_free swap_used swap_avail" > "e2e_top.txt"
 for num_image in "${num_images[@]}"; do
-    ./builddir/test_cam $num_image
+    test_cam $num_image
 
     # Setup top
-    top_output="top_output.txt"
-    top -b -d 0.5 > "$top_output" &
+    top -b -d 0.5 > $top_output &
     top_pid=$!
 
     sleep 0.5
-    ./builddir/dipp
+    dipp -i CAN -p can0 -a 162
     sleep 0.5
     kill $top_pid
 
@@ -74,3 +76,5 @@ for num_image in "${num_images[@]}"; do
     done < $top_output
     echo "$num_image $i $cpu_dipp_total $mem_dipp_total $mem_total $mem_free $mem_used $mem_buff_cache $swap_total $swap_free $swap_used $swap_avail" >> "e2e_top.txt"
 done
+rm $top_output
+echo "Done"
