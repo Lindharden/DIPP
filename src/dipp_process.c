@@ -313,6 +313,7 @@ void process(ImageBatch *input_batch)
     long end = 1000000000 * e_time.tv_sec + e_time.tv_nsec;
     float diff = (float)(end - start) / 1000000;
     fprintf(fh, "%d %.3f\n", num, diff);
+    fclose(fh);
 }
 
 int get_message_from_queue(ImageBatch *datarcv, int do_wait)
