@@ -16,10 +16,22 @@ ModuleParameterList module_parameter_lists[MAX_MODULES];
 
 static int is_setup = 0;
 
+int is_buffer_empty(uint8_t *buffer, size_t size) {
+    for (size_t i = 0; i < size; i++) {
+        if (buffer[i] != 0) {
+            return 0; // Buffer contains non-zero values
+        }
+    }
+    return 1; // Buffer contains only 0 values
+}
+
 size_t get_param_buffer(uint8_t **out, param_t *param)
 {
     uint8_t buf[DATA_PARAM_SIZE];
     param_get_data(param, buf, DATA_PARAM_SIZE);
+
+    if (is_buffer_empty(buf, DATA_PARAM_SIZE))
+        return 0;
 
     size_t decoded_size = DATA_PARAM_SIZE;
     uint8_t decoded_buffer[decoded_size];

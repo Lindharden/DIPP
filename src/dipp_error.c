@@ -1,4 +1,5 @@
 #include <param/param.h>
+#include <stdio.h>
 #include "dipp_error.h"
 #include "dipp_error_param.h"
 #include "dipp_paramids.h"
@@ -16,4 +17,5 @@ void set_error_param(ERROR_CODE error_code)
 {
     uint32_t error_value = get_error_as_uint32(error_code);
     param_set_uint32(&log_status, error_value);
+    printf("Error: %d\n", error_value);
 }

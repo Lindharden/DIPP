@@ -2,6 +2,7 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/shm.h>
+#include <time.h>
 #include "camera_control.h"
 #include "metadata.pb-c.h"
 #define STB_IMAGE_IMPLEMENTATION
@@ -15,7 +16,7 @@ int main(int argc, char *argv[])
         pipeline_id = atoi(argv[1]);
     }
     char input[100];
-    int i = 200;
+    struct timespec time;
     while (1)
     {
         printf("Type whatever to send image. Type 'quit' to exit.\n");
@@ -26,12 +27,16 @@ int main(int argc, char *argv[])
             printf("Exiting camera sim...\n");
             break;
         }
-
+        // Get timestamp (used for SHM key)
+        if (clock_gettime(CLOCK_MONOTONIC, &time) < 0)
+        {
+            perror("clock_gettime");
+            exit(EXIT_FAILURE);
+        }
         // Prepare the data
         ImageBatch data;
         data.mtype = 1;
         data.num_images = atoi(input);
-        data.shm_key = i += 20; // testing key
         data.pipeline_id = pipeline_id;
 
         const char *filename = "sim_image.png"; 
@@ -54,9 +59,10 @@ int main(int argc, char *argv[])
 
         uint32_t batch_size = (image_size + sizeof(uint32_t) + meta_size) * data.num_images;
 
-        int shmid = shmget(data.shm_key, batch_size, IPC_CREAT | 0666);
+        int shmid = shmget(time.tv_nsec, batch_size, IPC_CREAT | 0666);
         char *shmaddr = shmat(shmid, NULL, 0);
         data.batch_size = batch_size;
+        data.shmid = shmid;
         int offset = 0;
         for (size_t i = 0; i < data.num_images; i++)
         {
