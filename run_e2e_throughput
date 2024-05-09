@@ -1,15 +1,16 @@
 #!/bin/bash
 
-radio -i CAN -p can0 -a 150
+num_images=(1 2 4 2 1)
 
-num_images=(1 2 4 64 32 16 8 4 2 1)
 echo "Throughput for DIPP E2E with Demosaic and Encoding modules plus radio offload" > e2e_throughput.txt
+echo "num_images execution_ms" >> e2e_throughput.txt
+zmqproxy
+zmq=$!
+radio
+radio=$!
 for num_image in "${num_images[@]}"; do
     test_cam $num_image
-
-    dipp -i CAN -p can0 -a 162 > dipp_output_tmp.txt
-
-    grep "^Execution" dipp_output_tmp.txt | sed "s/^/Batch of $num_image images - /" >> e2e_throughput.txt
+    dipp
 done
-rm dipp_output_tmp.txt
+kill $zmq $radio
 echo "Done"

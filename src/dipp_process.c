@@ -253,7 +253,7 @@ void process(ImageBatch *input_batch)
         set_error_param(SHM_ATTACH);
         return;
     }
-
+    int num = input_batch->num_images;
     input_batch->data = shmaddr; // retrieve correct address in shared memory
 
     int key_before = input_batch->shm_key; // save key before
@@ -307,11 +307,12 @@ void process(ImageBatch *input_batch)
         perror("clock_gettime");
         exit(EXIT_FAILURE);
     }
-
+    FILE *fh = fopen("e2e_throughput.txt", "a+");
+    if (fh == NULL) return;
     long start = 1000000000 * s_time.tv_sec + s_time.tv_nsec;
     long end = 1000000000 * e_time.tv_sec + e_time.tv_nsec;
     float diff = (float)(end - start) / 1000000;
-    printf("Execution time of process: %.3f ms\n", diff);
+    fprintf(fh, "%d %.3f\n", num, diff);
 }
 
 int get_message_from_queue(ImageBatch *datarcv, int do_wait)
