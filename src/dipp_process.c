@@ -154,32 +154,7 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
             return FAILURE;
         }
 
-        if (data->shm_key != result.shm_key)
-        {
-            // Recieve shared memory id from result data
-            int shmid;
-            if ((shmid = shmget(result.shm_key, 0, 0)) == -1)
-            {
-                set_error_param(SHM_NOT_FOUND);
-                perror("Could not get shared memory");
-            }
-
-            // Attach to shared memory from id
-            void *shmaddr = shmat(shmid, NULL, 0);
-
-            if (shmaddr == (void *)-1)
-            {
-                set_error_param(SHM_ATTACH);
-                perror("Could not attach to shared memory");
-            }
-
-            data->data = shmaddr;
-        }
-        else
-        {
-            data->data = result.data;
-        }
-        data->shm_key = result.shm_key;
+        data->shmid = result.shmid;
         data->num_images = result.num_images;
         data->batch_size = result.batch_size;
         data->pipeline_id = result.pipeline_id;
@@ -260,57 +235,25 @@ void process(ImageBatch *input_batch)
         perror("clock_gettime");
         exit(EXIT_FAILURE);
     }
-    // Recieve shared memory id from recieved data
-    int shmid;
-    if ((shmid = shmget(input_batch->shm_key, 0, 0)) == FAILURE)
-    {
-        set_error_param(SHM_NOT_FOUND);
-        return;
-    }
+    int pipeline_result = load_pipeline_and_execute(input_batch);
+    
+    // Reset err values
+    err_current_pipeline = 0;
+    err_current_module = 0;
 
     // Attach to shared memory from id
-    void *shmaddr = shmat(shmid, NULL, 0);
-
-    if (shmaddr == (void *)-1)
+    void *shmaddr = shmat(input_batch->shmid, NULL, 0);
+    if (shmaddr == NULL)
     {
         set_error_param(SHM_ATTACH);
         return;
     }
-    int num = input_batch->num_images;
-    input_batch->data = shmaddr; // retrieve correct address in shared memory
 
-    int key_before = input_batch->shm_key; // save key before
-    // HEY
-    int pipeline_result = load_pipeline_and_execute(input_batch);
-
-    int key_after = input_batch->shm_key; // save key after
-
-    /* Override shmaddr in case module changed to new shm segment */
-    if (key_after != key_before)
-    {
-        if ((shmid = shmget(input_batch->shm_key, 0, 0)) == FAILURE)
-        {
-            set_error_param(SHM_NOT_FOUND);
-            return;
-        }
-
-        // Attach to shared memory from id
-        shmaddr = shmat(shmid, NULL, 0);
-
-        if (shmaddr == (void *)-1)
-        {
-            set_error_param(SHM_ATTACH);
-            return;
-        }
-    }
-
-    // Reset err values
-    err_current_pipeline = 0;
-    err_current_module = 0;
-    
     if (pipeline_result == SUCCESS)
     {
         //save_images("output", input_batch);
+        input_batch->data = shmaddr;
+        
         /* Measure upload time */
         struct timespec upload_start_time;
         if (clock_gettime(CLOCK_MONOTONIC, &upload_start_time) < 0)
@@ -339,8 +282,9 @@ void process(ImageBatch *input_batch)
     if (shmdt(shmaddr) == -1)
     {
         set_error_param(SHM_DETACH);
+        perror("shmdt");
     }
-    if (shmctl(shmid, IPC_RMID, NULL) == -1)
+    if (shmctl(input_batch->shmid, IPC_RMID, NULL) == -1)
     {
         set_error_param(SHM_REMOVE);
     }    
@@ -356,8 +300,10 @@ void process(ImageBatch *input_batch)
     long start = 1000000000 * s_time.tv_sec + s_time.tv_nsec;
     long end = 1000000000 * e_time.tv_sec + e_time.tv_nsec;
     float diff = (float)(end - start) / 1000000;
-    fprintf(fh, "%d %.3f\n", num, diff);
+    fprintf(fh, "%d %.3f\n", input_batch->num_images, diff);
     fclose(fh);
+
+    printf("Done!");
 }
 
 int get_message_from_queue(ImageBatch *datarcv, int do_wait)
