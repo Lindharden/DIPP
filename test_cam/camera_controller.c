@@ -26,7 +26,6 @@ int main(int argc, char *argv[])
     ImageBatch data;
     data.mtype = 1;
     data.num_images = atoi(argv[1]);
-    data.shm_key = time.tv_nsec;
     data.pipeline_id = 1;
 
     // Hardcoded bayer image specs
@@ -55,7 +54,8 @@ int main(int argc, char *argv[])
 
     uint32_t batch_size = (image_size + sizeof(uint32_t) + meta_size) * data.num_images;
 
-    int shmid = shmget(data.shm_key, batch_size, IPC_CREAT | 0666);
+    int shmid = shmget(time.tv_nsec, batch_size, IPC_CREAT | 0666);
+    data.shmid = shmid;
     char *shmaddr = shmat(shmid, NULL, 0);
     data.batch_size = batch_size;
     int offset = 0;
