@@ -11,6 +11,9 @@
 # Jpeg xl encoded files
 *.jxl
 
+# Text files
+*.txt
+
 # Compiled files
 /sim/camera
 /src/pipeline/pipeline
