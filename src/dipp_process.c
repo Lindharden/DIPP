@@ -24,6 +24,8 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#define STAGE_TIMESTAMP_FILE "e2e_stages.txt"
+
 static int output_pipe[2]; // Pipe for inter-process result communication
 static int error_pipe[2];  // Pipe for inter-process error communication
 
@@ -106,7 +108,20 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
         ProcessFunction module_function = pipeline->modules[i].module_function;
         ModuleParameterList *module_config = &module_parameter_lists[pipeline->modules[i].module_param_id];
 
+        /* Measure module execution time */
+        struct timespec module_start_time;
+        if (clock_gettime(CLOCK_MONOTONIC, &module_start_time) < 0)
+        {
+            perror("clock_gettime");
+            exit(EXIT_FAILURE);
+        }
         int module_status = execute_module_in_process(module_function, data, module_config);
+        struct timespec module_end_time;
+        if (clock_gettime(CLOCK_MONOTONIC, &module_end_time) < 0)
+        {
+            perror("clock_gettime");
+            exit(EXIT_FAILURE);
+        }
 
         if (module_status == FAILURE)
         {
@@ -117,6 +132,14 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
             close(error_pipe[1]);
             return FAILURE;
         }
+
+        FILE *fh = fopen(STAGE_TIMESTAMP_FILE, "a+");
+        if (fh == NULL) return;
+        long start = 1000000000 * module_start_time.tv_sec + module_start_time.tv_nsec;
+        long end = 1000000000 * module_end_time.tv_sec + module_end_time.tv_nsec;
+        float diff = (float)(end - start) / 1000000;
+        fprintf(fh, "'%s module' %d %.3f\n",pipeline->modules[i].module_name, data->num_images, diff);
+        fclose(fh);
 
         ImageBatch result;
         int res = read(output_pipe[0], &result, sizeof(result)); // Read the result from the pipe
@@ -288,7 +311,28 @@ void process(ImageBatch *input_batch)
     if (pipeline_result == SUCCESS)
     {
         //save_images("output", input_batch);
+        /* Measure upload time */
+        struct timespec upload_start_time;
+        if (clock_gettime(CLOCK_MONOTONIC, &upload_start_time) < 0)
+        {
+            perror("clock_gettime");
+            exit(EXIT_FAILURE);
+        }
         upload(input_batch->data, input_batch->batch_size);
+        struct timespec upload_end_time;
+        if (clock_gettime(CLOCK_MONOTONIC, &upload_end_time) < 0)
+        {
+            perror("clock_gettime");
+            exit(EXIT_FAILURE);
+        }
+
+        FILE *fh = fopen(STAGE_TIMESTAMP_FILE, "a+");
+        if (fh == NULL) return;
+        long start = 1000000000 * upload_start_time.tv_sec + upload_start_time.tv_nsec;
+        long end = 1000000000 * upload_end_time.tv_sec + upload_end_time.tv_nsec;
+        float diff = (float)(end - start) / 1000000;
+        fprintf(fh, "'Upload' %d %.3f\n", input_batch->num_images, diff);
+        fclose(fh);
     }
 
     // Detach and free shared memory
@@ -313,6 +357,7 @@ void process(ImageBatch *input_batch)
     long end = 1000000000 * e_time.tv_sec + e_time.tv_nsec;
     float diff = (float)(end - start) / 1000000;
     fprintf(fh, "%d %.3f\n", num, diff);
+    fclose(fh);
 }
 
 int get_message_from_queue(ImageBatch *datarcv, int do_wait)
@@ -336,11 +381,35 @@ int get_message_from_queue(ImageBatch *datarcv, int do_wait)
 /* Process one image batch from the message queue*/
 void process_one(int do_wait)
 {
+    /* Measure setup time */
+    struct timespec setup_start_time;
+    if (clock_gettime(CLOCK_MONOTONIC, &setup_start_time) < 0)
+    {
+        perror("clock_gettime");
+        exit(EXIT_FAILURE);
+    }
     setup_cache_if_needed();
+    struct timespec setup_end_time;
+    if (clock_gettime(CLOCK_MONOTONIC, &setup_end_time) < 0)
+    {
+        perror("clock_gettime");
+        exit(EXIT_FAILURE);
+    }
 
+    long start = 1000000000 * setup_start_time.tv_sec + setup_start_time.tv_nsec;
+    long end = 1000000000 * setup_end_time.tv_sec + setup_end_time.tv_nsec;
+    float diff = (float)(end - start) / 1000000;
+    
     ImageBatch datarcv;
     if (get_message_from_queue(&datarcv, do_wait) == SUCCESS)
+    {
+        FILE *fh = fopen(STAGE_TIMESTAMP_FILE, "a+");
+        if (fh == NULL) return;
+        fprintf(fh, "'Pipeline setup time' %d %.3f\n", datarcv.num_images, diff);
+        fclose(fh);
+
         process(&datarcv);
+    }        
 }
 
 /* Process all image batches in the message queue*/
