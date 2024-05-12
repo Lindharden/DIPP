@@ -45,15 +45,31 @@ void sub_timespec(struct timespec t1, struct timespec t2, struct timespec *td)
     }
 }
 
-int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *output_pipe, int *error_pipe, ModuleParameterList *config)
+static int output_pipe[2]; // Pipe for inter-process result communication
+static int error_pipe[2];  // Pipe for inter-process error communication
+
+// Signal handler for timeout
+void timeout_handler(int signum) {
+    printf("Module timeout reached\n");
+    uint16_t error_code = MODULE_EXIT_TIMEOUT;
+    write(error_pipe[1], &error_code, sizeof(uint16_t));
+    exit(EXIT_FAILURE); // Exit the child process with failure status
+}
+
+int execute_module_in_process(ProcessFunction func, ImageBatch *input, ModuleParameterList *config)
 {
     // Create a new process
     pid_t pid = fork();
 
     if (pid == 0)
     {
+        // Set up signal handler for timeout and starm alarm timer
+        signal(SIGALRM, timeout_handler);
+        alarm(param_get_uint32(&module_timeout));
+
         // Child process: Execute the module function
         ImageBatch result = func(input, config, error_pipe);
+        alarm(0); // stop timeout alarm
         size_t data_size = sizeof(result);
         write(output_pipe[1], &result, data_size); // Write the result to the pipe
         exit(EXIT_SUCCESS);
@@ -97,11 +113,13 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, int *outp
 }
 
 int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
-{
-    int output_pipe[2]; // Pipe for inter-process result communication
-    int error_pipe[2];  // Pipe for inter-process error communication
-    pipe(output_pipe);
-    pipe(error_pipe);
+{   
+    /* Initiate communication pipes */
+    if (pipe(output_pipe) == -1 || pipe(error_pipe) == -1)
+    {
+        set_error_param(PIPE_CREATE);
+        return FAILURE;
+    }
 
     for (size_t i = 0; i < data->pipeline_id; ++i)
     {
@@ -109,7 +127,7 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
         ProcessFunction module_function = pipeline->modules[0].module_function;
         ModuleParameterList *module_config = &module_parameter_lists[pipeline->modules[0].module_param_id];
 
-        int module_status = execute_module_in_process(module_function, data, output_pipe, error_pipe, module_config);
+        int module_status = execute_module_in_process(module_function, data, module_config);
 
         if (module_status == FAILURE)
         {
@@ -134,37 +152,13 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
             return FAILURE;
         }
 
-        if (data->shm_key != result.shm_key)
-        {
-            // Recieve shared memory id from result data
-            int shmid;
-            if ((shmid = shmget(result.shm_key, 0, 0)) == -1)
-            {
-                set_error_param(SHM_NOT_FOUND);
-                perror("Could not get shared memory");
-            }
-
-            // Attach to shared memory from id
-            void *shmaddr = shmat(shmid, NULL, 0);
-
-            if (shmaddr == (void *)-1)
-            {
-                set_error_param(SHM_ATTACH);
-                perror("Could not attach to shared memory");
-            }
-
-            data->data = shmaddr;
-        }
-        else
-        {
-            data->data = result.data;
-        }
-        data->shm_key = result.shm_key;
+        data->shmid = result.shmid;
         data->num_images = result.num_images;
         data->batch_size = result.batch_size;
         data->pipeline_id = result.pipeline_id;
     }
 
+    /* Close communication pipes */
     close(output_pipe[0]); // Close the read end of the pipe
     close(output_pipe[1]); // Close the write end of the pipe
     close(error_pipe[0]);
@@ -234,26 +228,7 @@ int load_pipeline_and_execute(ImageBatch *input_batch)
 }
 
 void process(ImageBatch *input_batch, int time)
-{
-    // Recieve shared memory id from recieved data
-    int shmid;
-    if ((shmid = shmget(input_batch->shm_key, 0, 0)) == FAILURE)
-    {
-        set_error_param(SHM_NOT_FOUND);
-        return;
-    }
-
-    // Attach to shared memory from id
-    void *shmaddr = shmat(shmid, NULL, 0);
-
-    if (shmaddr == (void *)-1)
-    {
-        set_error_param(SHM_ATTACH);
-        return;
-    }
-
-    input_batch->data = shmaddr; // retrieve correct address in shared memory
-
+{  
     struct timespec start_time;
     if (time)
     {
@@ -265,32 +240,9 @@ void process(ImageBatch *input_batch, int time)
         }
     }
     
-
-    int key_before = input_batch->shm_key; // save key before
     int pipeline_result = load_pipeline_and_execute(input_batch);
     if (pipeline_result == FAILURE) {
         perror("pipeline failure");
-    }
-
-    int key_after = input_batch->shm_key; // save key after
-
-    /* Override shmaddr in case module changed to new shm segment */
-    if (key_after != key_before)
-    {
-        if ((shmid = shmget(input_batch->shm_key, 0, 0)) == FAILURE)
-        {
-            set_error_param(SHM_NOT_FOUND);
-            return;
-        }
-
-        // Attach to shared memory from id
-        shmaddr = shmat(shmid, NULL, 0);
-
-        if (shmaddr == (void *)-1)
-        {
-            set_error_param(SHM_ATTACH);
-            return;
-        }
     }
 
     if (time)
@@ -327,8 +279,17 @@ void process(ImageBatch *input_batch, int time)
     err_current_pipeline = 0;
     err_current_module = 0;
 
+    // Attach to shared memory from id
+    void *shmaddr = shmat(input_batch->shmid, NULL, 0);
+    if (shmaddr == NULL)
+    {
+        set_error_param(SHM_ATTACH);
+        return;
+    }    
+
     if (pipeline_result == SUCCESS)
     {
+        input_batch->data = shmaddr; // retrieve correct address in shared memory
         // save_images("output", input_batch);
         // upload(input_batch->data, input_batch->batch_size);
     }
@@ -337,11 +298,13 @@ void process(ImageBatch *input_batch, int time)
     if (shmdt(shmaddr) == -1)
     {
         set_error_param(SHM_DETACH);
+        perror("shmdt");
     }
-    if (shmctl(shmid, IPC_RMID, NULL) == -1)
+    if (shmctl(input_batch->shmid, IPC_RMID, NULL) == -1)
     {
         set_error_param(SHM_REMOVE);
     }
+    printf("Done!");
 }
 
 int get_message_from_queue(ImageBatch *datarcv, int do_wait)

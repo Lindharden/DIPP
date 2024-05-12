@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <param/param.h>
+#include <brotli/decode.h>
 #include "dipp_error.h"
 #include "dipp_config.h"
 #include "dipp_config_param.h"
@@ -15,15 +16,32 @@ ModuleParameterList module_parameter_lists[MAX_MODULES];
 
 static int is_setup = 0;
 
+int is_buffer_empty(uint8_t *buffer, size_t size) {
+    for (size_t i = 0; i < size; i++) {
+        if (buffer[i] != 0) {
+            return 0; // Buffer contains non-zero values
+        }
+    }
+    return 1; // Buffer contains only 0 values
+}
+
 size_t get_param_buffer(uint8_t **out, param_t *param)
 {
-    // initialize buffer for module parameters
-    int initial_buf_size = DATA_PARAM_SIZE;
-    uint8_t buf[initial_buf_size];
-    param_get_data(param, buf, initial_buf_size);
-    int buf_size = (int)buf[0];
+    uint8_t buf[DATA_PARAM_SIZE];
+    param_get_data(param, buf, DATA_PARAM_SIZE);
 
-    *out = malloc(buf_size * sizeof(uint8_t));
+    if (is_buffer_empty(buf, DATA_PARAM_SIZE))
+        return 0;
+
+    size_t decoded_size = DATA_PARAM_SIZE;
+    uint8_t decoded_buffer[decoded_size];
+    if (BrotliDecoderDecompress((size_t)buf[0], buf + 1, &decoded_size, decoded_buffer) != BROTLI_DECODER_RESULT_SUCCESS)
+    {
+        set_error_param(INTERNAL_BROTLI_DECODE);
+        return 0;
+    }
+
+    *out = malloc(decoded_size * sizeof(uint8_t));
     if (!*out)
     {
         set_error_param(MEMORY_MALLOC);
@@ -31,12 +49,12 @@ size_t get_param_buffer(uint8_t **out, param_t *param)
     }
 
     // Copy the data from the original buffer to the new buffer
-    for (size_t i = 0; i < buf_size; i++)
+    for (size_t i = 0; i < decoded_size; i++)
     {
-        (*out)[i] = buf[i + 1];
+        (*out)[i] = decoded_buffer[i];
     }
 
-    return buf_size;
+    return decoded_size;
 }
 
 // Function to load a module and parameter from a configuration file
@@ -90,6 +108,9 @@ void setup_pipeline(param_t *param, int index)
         pipelines[pipeline_id].modules[module_idx].module_function = load_module(mdef->name);
         pipelines[pipeline_id].modules[module_idx].module_param_id = mdef->param_id - 1;
     }
+
+    /* Free the unpacked pipeline definition data */
+    pipeline_definition__free_unpacked(pdef, NULL);
 }
 
 void setup_module_config(param_t *param, int index)
@@ -138,7 +159,7 @@ void setup_module_config(param_t *param, int index)
             return;
         }
 
-        module_parameter_lists[module_id].parameters[i]->key = mcon->parameters[i]->key;
+        module_parameter_lists[module_id].parameters[i]->key = strdup(mcon->parameters[i]->key);
         module_parameter_lists[module_id].parameters[i]->value_case = mcon->parameters[i]->value_case;
 
         switch (mcon->parameters[i]->value_case)
@@ -153,12 +174,15 @@ void setup_module_config(param_t *param, int index)
                 module_parameter_lists[module_id].parameters[i]->float_value = mcon->parameters[i]->float_value;
                 break;
             case CONFIG_PARAMETER__VALUE_STRING_VALUE:
-                module_parameter_lists[module_id].parameters[i]->string_value = mcon->parameters[i]->string_value;
+                module_parameter_lists[module_id].parameters[i]->string_value = strdup(mcon->parameters[i]->string_value);
                 break;
             default:
                 break;
         }
     }
+
+    /* Free the unpacked module config data */
+    module_config__free_unpacked(mcon, NULL);
 }
 
 void setup_all_pipelines()

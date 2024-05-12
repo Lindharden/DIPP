@@ -3,6 +3,14 @@ DIPP stands for: DISCO Image Processing Pipeline.
 
 DIPP is a modular image processing pipeline tailored to run on the DISCO-2 CubeSat.
 
+## Prerequisites
+
+To build DIPP, the following packages is required:
+```
+sudo apt install libcurl4-openssl-dev git build-essential libsocketcan-dev can-utils libzmq3-dev libyaml-dev pkg-config fonts-powerline python3-pip libelf-dev libbsd-dev libprotobuf-c-dev brotli libbrotli-dev
+sudo pip3 install meson ninja
+```
+
 ## Pipeline modules
 To write modules for the pipeline, checkout the [DISCO-2 module template](https://github.com/Lindharden/DISCO2-module-template).
 
@@ -37,7 +45,7 @@ typedef struct ImageBatch {
     long mtype;          /* message type to read from the message queue */
     int num_images;      /* amount of images */
     int batch_size;      /* size of the image batch */
-    int shm_key;         /* key to shared memory segment of image data */
+    int shmid;           /* id of shared memory segment with image data */
     int pipeline_id;     /* id of pipeline to utilize for processing */
     unsigned char *data; /* address to image data (in shared memory) */
 } ImageBatch;
@@ -75,6 +83,7 @@ DIPP includes an integer parameter indicating the most recent cause of failure. 
 | 303        | Shared Memory Error: Attach                            |
 | 400        | Pipe Error: Read                                       |
 | 401        | Pipe Error: Empty                                      |
+| 402        | Pipe Error: Create                                     |
 | 500        | Internal Error: PID Not Found                          |
 | 501        | Internal Error: Shared Object Not Found                |
 | 502        | Internal Error: Run Not Found                          |
@@ -91,8 +100,11 @@ DIPP includes an integer parameter indicating the most recent cause of failure. 
 | 513        | Internal Error: Failed to push remote parameter        |
 | 514        | Internal Error: VMEM Not Found                         |
 | 515        | Internal Error: VMEM Upload Failed                     |
+| 516        | Internal Error: Brotli Decoding Failed                 |
+| 516        | Internal Error: Timespec Clock Get Time                |
 | 600        | Module Exit Error: Crash                               |
 | 601        | Module Exit Error: Normal                              |
+| 602        | Module Exit Error: Timeout                             |
 | 700-799    | Module Exit Error: Custom error code defined by module |
 
 All error codes are suffixed with ID of the pipeline (1 digit ranging from 1-9) and index of the module (2 digits ranging from 1-99) if applicable. Error codes suffixed with 0's indicate failure happening outside of a module.

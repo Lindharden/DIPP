@@ -62,11 +62,11 @@ int main(int argc, char *argv[])
         if (clock_gettime(CLOCK_MONOTONIC, &tms)) {
             return -1;
         }
-        int64_t key = tms.tv_nsec;
-        data.shm_key = key;
+        int64_t id = tms.tv_nsec;
+        data.shmid = id;
 
         /* Retry shmget if it fails to create the shared memory segment */
-        shmid = shmget(data.shm_key, batch_size, IPC_CREAT | 0666);
+        shmid = shmget(data.shmid, batch_size, IPC_CREAT | 0666);
         sleep(1);
     }
     
