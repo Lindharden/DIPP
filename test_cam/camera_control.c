@@ -62,14 +62,13 @@ int main(int argc, char *argv[])
         if (clock_gettime(CLOCK_MONOTONIC, &tms)) {
             return -1;
         }
-        int64_t id = tms.tv_nsec;
-        data.shmid = id;
 
         /* Retry shmget if it fails to create the shared memory segment */
-        shmid = shmget(data.shmid, batch_size, IPC_CREAT | 0666);
+        shmid = shmget(tms.tv_nsec, batch_size, IPC_CREAT | 0666);
         sleep(1);
     }
     
+    data.shmid = shmid;
     char *shmaddr = shmat(shmid, NULL, 0);
     int offset = 0;
     for (size_t j = 0; j < data.num_images; j++)

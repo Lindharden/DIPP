@@ -3,7 +3,7 @@
 
 #include "dipp_config.h"
 
-#define MSG_QUEUE_KEY 77
+#define MSG_QUEUE_KEY 78
 
 // Return codes
 #define SUCCESS 0

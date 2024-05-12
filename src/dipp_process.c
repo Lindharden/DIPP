@@ -304,7 +304,6 @@ void process(ImageBatch *input_batch, int time)
     {
         set_error_param(SHM_REMOVE);
     }
-    printf("Done!");
 }
 
 int get_message_from_queue(ImageBatch *datarcv, int do_wait)
