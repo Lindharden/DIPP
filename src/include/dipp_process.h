@@ -3,7 +3,7 @@
 
 #include "dipp_config.h"
 
-#define MSG_QUEUE_KEY 77
+#define MSG_QUEUE_KEY 78
 
 // Return codes
 #define SUCCESS 0
@@ -23,7 +23,7 @@ typedef struct ImageBatch {
     long mtype;          /* message type to read from the message queue */
     int num_images;      /* amount of images */
     int batch_size;      /* size of the image batch */
-    int shm_key;         /* key to shared memory segment of image data */
+    int shmid;           /* key to shared memory segment of image data */
     int pipeline_id;     /* id of pipeline to utilize for processing */
     unsigned char *data; /* address to image data (in shared memory) */
 } ImageBatch;

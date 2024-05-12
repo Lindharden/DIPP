@@ -1,11 +1,15 @@
 # Image files
 *.png
+*.bayerRG
 
 # IDE specific files
 /.vscode/
 
 # vmem files for persistent parameters
 # *.vmem
+
+# Jpeg xl encoded files
+*.jxl
 
 # Compiled files
 /sim/camera

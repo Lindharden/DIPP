@@ -81,14 +81,13 @@ int main(int argc, char *argv[])
         if (clock_gettime(CLOCK_MONOTONIC, &tms)) {
             return -1;
         }
-        int64_t key = tms.tv_nsec;
-        data.shm_key = key;
 
         /* Retry shmget if it fails to create the shared memory segment */
-        shmid = shmget(data.shm_key, batch_size, IPC_CREAT | 0666);
+        shmid = shmget(tms.tv_nsec, batch_size, IPC_CREAT | 0666);
         sleep(1);
     }
     
+    data.shmid = shmid;
     char *shmaddr = shmat(shmid, NULL, 0);
     int offset = 0;
     for (size_t j = 0; j < data.num_images; j++)
@@ -113,7 +112,7 @@ int main(int argc, char *argv[])
 
     // wait until DIPP has removed the shared memory segment
     while (wait && shmid != -1) {
-        shmid = shmget(data.shm_key, 0, 0);
+        shmid = shmget(data.shmid, 0, 0);
         sleep(1);
     }
 }
