@@ -6,7 +6,10 @@
 /.vscode/
 
 # vmem files for persistent parameters
-# *.vmem
+# *.vmem.
+
+# text files
+*.txt
 
 # Jpeg xl encoded files
 *.jxl
@@ -17,7 +20,7 @@
 
 # Object files
 *.o
-*.ko
+*.koshm_key,
 *.obj
 *.elf
 
