@@ -14,6 +14,9 @@
 # Jpeg xl encoded files
 *.jxl
 
+# Text files
+*.txt
+
 # Compiled files
 /sim/camera
 /src/pipeline/pipeline
@@ -36,7 +39,7 @@
 
 # Shared objects (inc. Windows DLLs)
 *.dll
-*.so
+# *.so
 *.so.*
 *.dylib
 
