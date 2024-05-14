@@ -25,6 +25,7 @@
 #include "stb_image_write.h"
 
 #define STAGE_TIMESTAMP_FILE "e2e_stages.txt"
+#define SIZE_FILE "e2e_sizes.txt"
 
 static int output_pipe[2]; // Pipe for inter-process result communication
 static int error_pipe[2];  // Pipe for inter-process error communication
@@ -229,6 +230,9 @@ int load_pipeline_and_execute(ImageBatch *input_batch)
 
 void process(ImageBatch *input_batch)
 {
+    /* Save 'before' size */
+    int size_before = input_batch->batch_size;
+
     struct timespec s_time;
     if (clock_gettime(CLOCK_MONOTONIC, &s_time) < 0)
     {
@@ -276,6 +280,12 @@ void process(ImageBatch *input_batch)
         float diff = (float)(end - start) / 1000000;
         fprintf(fh, "'Upload' %d %.3f\n", input_batch->num_images, diff);
         fclose(fh);
+
+        /* Save 'before' and 'after' size */
+        FILE *fh_size = fopen(SIZE_FILE, "a+");
+        if (fh_size == NULL) return;
+        fprintf(fh_size, "%d %d %d\n", input_batch->num_images, size_before, input_batch->batch_size);
+        fclose(fh_size);
     }
 
     // Detach and free shared memory
