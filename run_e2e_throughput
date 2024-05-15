@@ -1,6 +1,7 @@
 #!/bin/bash
 
 num_images=(1 2 4 2 1)
+images=(image1.bayerRG image5.bayerRG image10.bayerRG)
 
 echo "Time for different stages of DIPP processing E2E with Demosaic and Encoding modules plus radio offload" > e2e_stages.txt
 echo "stage num_images execution_ms" >> e2e_stages.txt
@@ -11,9 +12,11 @@ echo "num_images execution_ms" >> e2e_throughput.txt
 echo "Image size before and after running through pipeline" > e2e_sizes.txt
 echo "num_images before_bytes after_bytes" >> e2e_sizes.txt
 
-for num_image in "${num_images[@]}"; do
-    ./builddir/test_cam $num_image
-    ./builddir/dipp
+for image in "${images[@]}"; do
+    for num_image in "${num_images[@]}"; do
+        ./builddir/test_cam $num_image $image
+        ./builddir/dipp
+    done
 done
 
 echo "Done"
