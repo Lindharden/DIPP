@@ -1,6 +1,7 @@
 #!/bin/bash
 
-num_images=(1 2 4 8 16 32)
+num_images=(1 2 4 8 16)
+images=(building.raw inside.raw)
 
 echo "Time for different stages of DIPP processing E2E with Demosaic and Encoding modules plus radio offload" > e2e_stages.txt
 echo "stage num_images execution_ms" >> e2e_stages.txt
@@ -15,9 +16,11 @@ zmqproxy &
 zmq=$!
 radio &
 radio=$!
-for num_image in "${num_images[@]}"; do
-    test_cam $num_image image.raw
-    dipp
+for image in "${num_images[@]}"; do
+    for num_image in "${images[@]}"; do
+        test_cam $num_image $image
+        dipp
+    done
 done
 kill $zmq $radio
 echo "Done"
