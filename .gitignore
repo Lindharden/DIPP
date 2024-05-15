@@ -6,7 +6,7 @@
 /.vscode/
 
 # vmem files for persistent parameters
-# *.vmem
+*.vmem
 
 # Jpeg xl encoded files
 *.jxl
