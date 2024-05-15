@@ -9,10 +9,13 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
+    if (argc < 3)
     {
+        printf("Missing arguments: Expected <num_images> <image_name>");
         return -1;
     }
+
+    char * image_name = argv[2];
 
     // Get timestamp (used for SHM key)
     struct timespec time;
@@ -29,8 +32,8 @@ int main(int argc, char *argv[])
     data.pipeline_id = 1;
 
     // Hardcoded bayer image specs
-    uint32_t image_height = 1944;
-    uint32_t image_width = 2592; 
+    uint32_t image_height = 2056;
+    uint32_t image_width = 2464; 
     uint32_t bits_per_pixel = 12;
     uint32_t bytes_per_pixel = 2;
     uint32_t image_channels = 1;
@@ -45,7 +48,8 @@ int main(int argc, char *argv[])
     new_meta.bits_pixel = bits_per_pixel;
     new_meta.camera = "rgb";
 
-    const char *filename = "input.bayerRG"; 
+    const char filename[30];
+    sprintf(filename, "images/%s", image_name);
     FILE *fh = fopen(filename, "r");
 
     size_t meta_size = metadata__get_packed_size(&new_meta);

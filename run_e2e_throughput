@@ -16,7 +16,7 @@ zmq=$!
 radio &
 radio=$!
 for num_image in "${num_images[@]}"; do
-    test_cam $num_image
+    test_cam $num_image image.raw
     dipp
 done
 kill $zmq $radio
