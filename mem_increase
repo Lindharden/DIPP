@@ -1,0 +1,75 @@
+#!/bin/bash
+
+top_output="top_output.txt"
+echo "snapshot %CPU %MEM mem_total mem_free mem_used mem_buff_cache swap_total swap_free swap_used swap_avail" > "mem_top.txt"
+
+test_cam 1
+
+top -b -d 0.01 > "$top_output" &
+top_pid=$!
+
+sleep 0.5
+
+dipp >/dev/null &
+dipp_pid=$!
+
+sleep 0.5
+
+kill $top_pid >/dev/null 2>&1
+wait $top_pid >/dev/null 2>&1
+
+cpu_dipp_total="0.0"
+mem_dipp_total="0.0"
+
+mem_total="0.0"
+mem_free="0.0"
+mem_used="0.0"
+mem_buff_cache="0.0"
+
+swap_total="0.0"
+swap_free="0.0"
+swap_used="0.0"
+swap_avail="0.0"
+i=0  
+
+while IFS= read -r line; do
+    if [[ $line =~ ^top ]]; then
+        if [[ $i > 0 ]]; then
+            echo "$i $cpu_dipp_total $mem_dipp_total $mem_total $mem_free $mem_used $mem_buff_cache $swap_total $swap_free $swap_used $swap_avail" >> "mem_top.txt"
+            # Reset values in case the processes are not present
+            cpu_dipp_total=0.0
+            mem_dipp_total=0.0
+            
+            mem_total="0.0"
+            mem_free="0.0"
+            mem_used="0.0"
+            mem_buff_cache="0.0"
+
+            swap_total="0.0"
+            swap_free="0.0"
+            swap_used="0.0"
+            swap_avail="0.0"
+        fi
+        ((i++))
+    fi
+    if [[ $line =~ dipp ]]; then
+        cpu_dipp=$(echo "$line" | awk '{print $9}')
+        mem_dipp=$(echo "$line" | awk '{print $10}')
+        cpu_dipp_total=$(echo "$cpu_dipp_total + $cpu_dipp" | bc)
+        mem_dipp_total=$(echo "$mem_dipp_total + $mem_dipp" | bc)
+    fi
+    if [[ $line =~ "MiB Mem" ]]; then
+        mem_total=$(echo "$line" | awk '{print $4}')
+        mem_free=$(echo "$line" | awk '{print $6}')
+        mem_used=$(echo "$line" | awk '{print $8}')
+        mem_buff_cache=$(echo "$line" | awk '{print $10}')
+    fi
+    if [[ $line =~ "MiB Swap" ]]; then
+        swap_total=$(echo "$line" | awk '{print $3}')
+        swap_free=$(echo "$line" | awk '{print $5}')
+        swap_used=$(echo "$line" | awk '{print $7}')
+        swap_avail=$(echo "$line" | awk '{print $9}')
+    fi
+done < $top_output
+echo "$i $cpu_dipp_total $mem_dipp_total $mem_total $mem_free $mem_used $mem_buff_cache $swap_total $swap_free $swap_used $swap_avail" >> "mem_top.txt"
+echo "Done"
