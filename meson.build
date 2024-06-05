@@ -34,8 +34,9 @@ dirs = include_directories('src/include', 'src/include/protobuf', 'src/include/p
 csp_dep = dependency('csp', fallback: ['csp', 'csp_dep'])
 param_dep = dependency('param', fallback: ['param', 'param_dep'])
 proto_c_dep = dependency('libprotobuf-c', fallback: ['protobuf-c', 'proto_c_dep'])
+brotli_dep = dependency('libbrotlidec')
 m_dep = meson.get_compiler('c').find_library('m', required : false)
-deps = [csp_dep,param_dep,proto_c_dep,m_dep]
+deps = [csp_dep,param_dep,proto_c_dep,m_dep,brotli_dep]
 
 c_args = '-DHOSTNAME="@0@"'.format(get_option('hostname'))
 

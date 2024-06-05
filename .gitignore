@@ -1,5 +1,6 @@
 # Image files
 *.png
+*.bayerRG
 
 !test.png
 

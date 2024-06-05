@@ -93,8 +93,11 @@ int execute_module_in_process(ProcessFunction func, ImageBatch *input, ModulePar
 int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
 {   
     /* Initiate communication pipes */
-    pipe(output_pipe);
-    pipe(error_pipe);
+    if (pipe(output_pipe) == -1 || pipe(error_pipe) == -1)
+    {
+        set_error_param(PIPE_CREATE);
+        return FAILURE;
+    }
 
     for (size_t i = 0; i < pipeline->num_modules; ++i)
     {
@@ -127,32 +130,7 @@ int execute_pipeline(Pipeline *pipeline, ImageBatch *data)
             return FAILURE;
         }
 
-        if (data->shm_key != result.shm_key)
-        {
-            // Recieve shared memory id from result data
-            int shmid;
-            if ((shmid = shmget(result.shm_key, 0, 0)) == -1)
-            {
-                set_error_param(SHM_NOT_FOUND);
-                perror("Could not get shared memory");
-            }
-
-            // Attach to shared memory from id
-            void *shmaddr = shmat(shmid, NULL, 0);
-
-            if (shmaddr == (void *)-1)
-            {
-                set_error_param(SHM_ATTACH);
-                perror("Could not attach to shared memory");
-            }
-
-            data->data = shmaddr;
-        }
-        else
-        {
-            data->data = result.data;
-        }
-        data->shm_key = result.shm_key;
+        data->shmid = result.shmid;
         data->num_images = result.num_images;
         data->batch_size = result.batch_size;
         data->pipeline_id = result.pipeline_id;
@@ -231,34 +209,24 @@ int load_pipeline_and_execute(ImageBatch *input_batch)
 
 void process(ImageBatch *input_batch)
 {
-    // Recieve shared memory id from recieved data
-    int shmid;
-    if ((shmid = shmget(input_batch->shm_key, 0, 0)) == FAILURE)
-    {
-        set_error_param(SHM_NOT_FOUND);
-        return;
-    }
+    int pipeline_result = load_pipeline_and_execute(input_batch);
+    
+    // Reset err values
+    err_current_pipeline = 0;
+    err_current_module = 0;
 
     // Attach to shared memory from id
-    void *shmaddr = shmat(shmid, NULL, 0);
-
-    if (shmaddr == (void *)-1)
+    void *shmaddr = shmat(input_batch->shmid, NULL, 0);
+    if (shmaddr == NULL)
     {
         set_error_param(SHM_ATTACH);
         return;
     }
 
-    input_batch->data = shmaddr; // retrieve correct address in shared memory
-
-    int pipeline_result = load_pipeline_and_execute(input_batch);
-
-    // Reset err values
-    err_current_pipeline = 0;
-    err_current_module = 0;
-
     if (pipeline_result == SUCCESS)
     {
         //save_images("output", input_batch);
+        input_batch->data = shmaddr;
         upload(input_batch->data, input_batch->batch_size);
     }
 
@@ -266,11 +234,13 @@ void process(ImageBatch *input_batch)
     if (shmdt(shmaddr) == -1)
     {
         set_error_param(SHM_DETACH);
+        perror("shmdt");
     }
-    if (shmctl(shmid, IPC_RMID, NULL) == -1)
+    if (shmctl(input_batch->shmid, IPC_RMID, NULL) == -1)
     {
         set_error_param(SHM_REMOVE);
     }
+    printf("Done!");
 }
 
 int get_message_from_queue(ImageBatch *datarcv, int do_wait)
