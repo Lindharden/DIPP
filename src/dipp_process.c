@@ -223,7 +223,7 @@ void process(ImageBatch *input_batch)
     {
         //save_images("output", input_batch);
         input_batch->data = shmaddr;
-        upload(input_batch->data, input_batch->batch_size);
+        upload(input_batch->data, input_batch->num_images, input_batch->batch_size);
     }
 
     // Detach and free shared memory
