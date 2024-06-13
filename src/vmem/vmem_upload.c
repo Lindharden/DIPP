@@ -6,6 +6,7 @@
 #include "dipp_error.h"
 #include "vmem_upload.h"
 #include "vmem_upload_param.h"
+#include "protobuf/metadata.pb-c.h"
 
 /* Local ring-buffer */
 void upload(unsigned char *data, int num, int len) 
