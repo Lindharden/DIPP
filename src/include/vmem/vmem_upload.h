@@ -13,9 +13,10 @@
 /**
  * Upload data to another node at the specified address.
  * @param data Image batch data to upload to radio. 
+ * @param num Amount of images to upload.
  * @param len Length of data to upload.
 */
-void upload(unsigned char *data, int len);
+void upload(unsigned char *data, int num, int len);
 
 VMEM_DEFINE_RING(ring, "ring", "ring.vmem", 1000000000, 100);
 
