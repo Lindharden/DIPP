@@ -18,7 +18,8 @@
 #include "dipp_process_param.h"
 #include "dipp_paramids.h"
 #include "vmem_storage.h"
-#include "vmem_upload.h"
+// #include "vmem_upload.h"
+#include "vmem_upload_local.h"
 #include "metadata.pb-c.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"

@@ -10,7 +10,9 @@
 #include <pthread.h>
 #include <vmem/vmem_server.h>
 #include <vmem/vmem_file.h>
+#include <vmem/vmem_ring.h>
 #include "vmem_storage.h"
+#include "vmem_ring_buffer.h"
 #include <csp/drivers/usart.h>
 #include <csp/drivers/can_socketcan.h>
 
@@ -135,6 +137,7 @@ int main(int argc, char *argv[])
 	csp_bind_callback(param_serve, PARAM_PORT_SERVER);
 
 	vmem_file_init(&vmem_storage);
+	vmem_ring_init(&vmem_images);
 
 	static pthread_t router_handle;
 	pthread_create(&router_handle, NULL, &router_task, NULL);
