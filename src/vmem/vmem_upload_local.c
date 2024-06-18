@@ -6,6 +6,7 @@
 #include "dipp_error.h"
 #include "vmem_upload_local.h"
 #include "vmem_upload_param.h"
+#include "vmem_ring_buffer.h"
 #include "protobuf/metadata.pb-c.h"
 
 /* Local ring-buffer */
@@ -29,6 +30,7 @@ void upload(unsigned char *data, int num, int len)
         uint32_t end = offset;
         image_index++;
 
-        vmem_ring_upload(node, timeout, "images", (char *)(data + start), end - start, 2);
+        // vmem_ring_upload(node, timeout, "images", (char *)(data + start), end - start, 2);
+        vmem_ring_write(&vmem_images, 0, (char *)(data + start), end - start);
     }
 }
