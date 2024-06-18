@@ -18,7 +18,8 @@
 #include "dipp_process_param.h"
 #include "dipp_paramids.h"
 #include "vmem_storage.h"
-#include "vmem_upload.h"
+// #include "vmem_upload.h"
+#include "vmem_upload_local.h"
 #include "metadata.pb-c.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -209,8 +210,10 @@ int load_pipeline_and_execute(ImageBatch *input_batch)
 
 void process(ImageBatch *input_batch)
 {
+    printf("Processing\n");
     int pipeline_result = load_pipeline_and_execute(input_batch);
     
+    printf("Done processing\n");
     // Reset err values
     err_current_pipeline = 0;
     err_current_module = 0;
@@ -227,7 +230,10 @@ void process(ImageBatch *input_batch)
     {
         //save_images("output", input_batch);
         input_batch->data = shmaddr;
-        upload(input_batch->data, input_batch->batch_size);
+            
+        printf("Uploading\n");
+        upload(input_batch->data, input_batch->num_images, input_batch->batch_size);
+        printf("Done uploading\n");
     }
 
     // Detach and free shared memory
@@ -240,7 +246,7 @@ void process(ImageBatch *input_batch)
     {
         set_error_param(SHM_REMOVE);
     }
-    printf("Done!");
+    printf("Done!\n");
 }
 
 int get_message_from_queue(ImageBatch *datarcv, int do_wait)
